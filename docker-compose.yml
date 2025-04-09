@@ -1,0 +1,13 @@
+version: '3.5'
+services:
+  dev:
+    user: root
+    build:
+      dockerfile: Dockerfile
+      context: .
+    volumes:
+      - ./:/usr/src/compressedfhir
+    container_name: compressedfhir_dev
+    working_dir: /usr/src/compressedfhir
+    env_file:
+      - docker.env
