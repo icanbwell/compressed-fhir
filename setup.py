@@ -55,7 +55,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/icanbwell/compressed-fhir",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=["msgpack>=1.0.0", "orjson>=3.10.16"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
