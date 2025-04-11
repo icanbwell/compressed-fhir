@@ -40,7 +40,7 @@ class FhirJSONEncoder(json.JSONEncoder):
             return o.isoformat()
 
         if hasattr(o, "to_dict"):
-            return o.dict()
+            return o.to_dict()
 
         # New type handlers
 
