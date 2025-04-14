@@ -41,13 +41,17 @@ class FhirBundleEntryResponse:
     def from_dict(
         cls, d: Dict[str, Any] | OrderedDict[str, Any]
     ) -> "FhirBundleEntryResponse":
+
+        date_last_modified: Optional[datetime] = None
+        if "lastModified" in d:
+            if isinstance(d["lastModified"], datetime):
+                date_last_modified = d["lastModified"]
+            elif isinstance(d["lastModified"], str):
+                date_last_modified = datetime.fromisoformat(d["lastModified"])
+
         return cls(
             status=d["status"] if "status" in d else "200",
-            lastModified=(
-                datetime.fromisoformat(d["lastModified"])
-                if "lastModified" in d
-                else None
-            ),
+            lastModified=date_last_modified,
             etag=d["etag"] if "etag" in d else None,
             location=d["location"] if "location" in d else None,
         )
