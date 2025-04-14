@@ -43,14 +43,16 @@ class FhirBundleEntryRequest:
     def from_dict(
         cls, d: Dict[str, Any] | OrderedDict[str, Any]
     ) -> "FhirBundleEntryRequest":
+        date_if_modified_since: Optional[datetime] = None
+        if "ifModifiedSince" in d:
+            if isinstance(d["ifModifiedSince"], datetime):
+                date_if_modified_since = d["ifModifiedSince"]
+            elif isinstance(d["ifModifiedSince"], str):
+                date_if_modified_since = datetime.fromisoformat(d["ifModifiedSince"])
         return cls(
             url=d.get("url", "https://example.com"),
             method=d.get("method", "GET"),
-            ifModifiedSince=(
-                datetime.fromisoformat(d["ifModifiedSince"])
-                if "ifModifiedSince" in d
-                else None
-            ),
+            ifModifiedSince=date_if_modified_since,
             ifNoneMatch=d["ifNoneMatch"] if "ifNoneMatch" in d else None,
             ifNoneExist=d["ifNoneExist"] if "ifNoneExist" in d else None,
         )
