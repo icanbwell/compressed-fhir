@@ -13,6 +13,9 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode im
 )
 from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
+from compressedfhir.utilities.ordered_dict_to_dict_converter.ordered_dict_to_dict_converter import (
+    OrderedDictToDictConverter,
+)
 
 
 class FhirBundle:
@@ -286,6 +289,4 @@ class FhirBundle:
 
         :return: Plain dictionary representation of the Bundle
         """
-        return cast(
-            Dict[str, Any], json.loads(json.dumps(self.dict(), cls=FhirJSONEncoder))
-        )
+        return OrderedDictToDictConverter.convert(self.dict())

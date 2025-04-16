@@ -15,6 +15,9 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode im
     CompressedDictStorageType,
 )
 from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
+from compressedfhir.utilities.ordered_dict_to_dict_converter.ordered_dict_to_dict_converter import (
+    OrderedDictToDictConverter,
+)
 
 
 class CompressedDict[K, V](MutableMapping[K, V]):
@@ -630,6 +633,4 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         Returns:
             Plain dictionary
         """
-        return cast(
-            Dict[K, V], json.loads(json.dumps(self.dict(), cls=FhirJSONEncoder))
-        )
+        return OrderedDictToDictConverter.convert(self.dict())
