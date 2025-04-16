@@ -1,5 +1,4 @@
 import copy
-import json
 from collections.abc import KeysView, ValuesView, ItemsView, MutableMapping
 from contextlib import contextmanager
 from typing import Dict, Optional, Iterator, cast, List, Any, overload, OrderedDict
@@ -14,7 +13,9 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode im
     CompressedDictStorageMode,
     CompressedDictStorageType,
 )
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
+from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
+    TypePreservationSerializer,
+)
 from compressedfhir.utilities.ordered_dict_to_dict_converter.ordered_dict_to_dict_converter import (
     OrderedDictToDictConverter,
 )
@@ -149,7 +150,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             # For serialized modes, deserialize
             working_dict = (
                 self._deserialize_dict(
-                    serialized_dict=self._serialized_dict,
+                    serialized_dict_bytes=self._serialized_dict,
                     storage_type=self._storage_mode.storage_type,
                 )
                 if self._serialized_dict
@@ -175,9 +176,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         assert isinstance(dictionary, OrderedDict)
         if storage_type == "compressed":
             # Serialize to JSON and compress with zlib
-            json_str = json.dumps(
-                dictionary, separators=(",", ":"), cls=FhirJSONEncoder
-            )  # Most compact JSON representation
+            json_str = TypePreservationSerializer.serialize(
+                dictionary, separators=(",", ":")
+            )
             return zlib.compress(
                 json_str.encode("utf-8"), level=zlib.Z_BEST_COMPRESSION
             )
@@ -198,34 +199,37 @@ class CompressedDict[K, V](MutableMapping[K, V]):
     @staticmethod
     def _deserialize_dict(
         *,
-        serialized_dict: bytes,
+        serialized_dict_bytes: bytes,
         storage_type: CompressedDictStorageType,
     ) -> OrderedDict[K, V]:
         """
         Deserialize entire dictionary from MessagePack
 
         Args:
-            serialized_dict: Serialized dictionary bytes
+            serialized_dict_bytes: Serialized dictionary bytes
 
         Returns:
             Deserialized dictionary
         """
-        assert serialized_dict is not None, "Serialized dictionary cannot be None"
+        assert serialized_dict_bytes is not None, "Serialized dictionary cannot be None"
+        assert isinstance(serialized_dict_bytes, bytes)
 
         if storage_type == "compressed":
             # Decompress and parse JSON
-            decompressed = zlib.decompress(serialized_dict)
-            decoded_text = decompressed.decode("utf-8")
+            decompressed_bytes: bytes = zlib.decompress(serialized_dict_bytes)
+            decoded_text: str = decompressed_bytes.decode("utf-8")
             # noinspection PyTypeChecker
-            decompressed_dict = json.loads(decoded_text, object_pairs_hook=OrderedDict)
+            decompressed_dict = TypePreservationSerializer.deserialize(
+                decoded_text, object_pairs_hook=OrderedDict
+            )
             assert isinstance(decompressed_dict, OrderedDict)
             return cast(OrderedDict[K, V], decompressed_dict)
 
         # Decompress if needed
         to_unpack = (
-            zlib.decompress(serialized_dict)
+            zlib.decompress(serialized_dict_bytes)
             if storage_type == "compressed_msgpack"
-            else serialized_dict
+            else serialized_dict_bytes
         )
 
         # Deserialize
@@ -634,3 +638,36 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             Plain dictionary
         """
         return OrderedDictToDictConverter.convert(self.dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "CompressedDict[K, V]":
+        """
+        Create a FhirResource object from a JSON string.
+
+        :param json_str: The JSON string to convert.
+        :return: A FhirResource object.
+        """
+        data = TypePreservationSerializer.deserialize(json_str)
+        return cls.from_dict(data)
+
+    @classmethod
+    def from_dict(
+        cls,
+        d: Dict[K, V],
+        *,
+        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        properties_to_cache: List[K] | None = None,
+    ) -> "CompressedDict[K, V]":
+        """
+        Creates a FhirResource object from a dictionary.
+
+        :param d: The dictionary to convert.
+        :param storage_mode: The storage mode for the CompressedDict.
+        :param properties_to_cache: Optional list of properties to cache
+        :return: A FhirResource object.
+        """
+        return cls(
+            initial_dict=d,
+            storage_mode=storage_mode,
+            properties_to_cache=properties_to_cache,
+        )

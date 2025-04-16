@@ -65,17 +65,6 @@ class FhirResource(CompressedDict[str, Any]):
         """Convert the resource to a JSON string."""
         return json.dumps(obj=self.dict(), cls=FhirJSONEncoder)
 
-    @classmethod
-    def from_json(cls, json_str: str) -> "FhirResource":
-        """
-        Create a FhirResource object from a JSON string.
-
-        :param json_str: The JSON string to convert.
-        :return: A FhirResource object.
-        """
-        data = json.loads(json_str)
-        return cls.from_dict(data)
-
     def __deepcopy__(self, memo: Dict[int, Any]) -> "FhirResource":
         """Create a copy of the resource."""
         return FhirResource(
@@ -112,22 +101,6 @@ class FhirResource(CompressedDict[str, Any]):
 
         return result
 
-    @classmethod
-    def from_dict(
-        cls,
-        d: Dict[str, Any],
-        *,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
-    ) -> "FhirResource":
-        """
-        Creates a FhirResource object from a dictionary.
-
-        :param d: The dictionary to convert.
-        :param storage_mode: The storage mode for the CompressedDict.
-        :return: A FhirResource object.
-        """
-        return cls(initial_dict=d, storage_mode=storage_mode)
-
     def remove_nulls(self) -> None:
         """
         Removes None values from the resource dictionary.
@@ -161,3 +134,40 @@ class FhirResource(CompressedDict[str, Any]):
         else:
             assert isinstance(value, FhirMeta)
             self["meta"] = value.dict()
+
+    @classmethod
+    @override
+    def from_json(cls, json_str: str) -> "FhirResource":
+        """
+        Creates a FhirResource object from a JSON string.
+
+        :param json_str: JSON string representing the resource.
+        :return: A FhirResource object.
+        """
+        return cast(FhirResource, super().from_json(json_str=json_str))
+
+    @classmethod
+    @override
+    def from_dict(
+        cls,
+        d: Dict[str, Any],
+        *,
+        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        properties_to_cache: List[str] | None = None,
+    ) -> "FhirResource":
+        """
+        Creates a FhirResource object from a dictionary.
+
+        :param d: Dictionary representing the resource.
+        :param storage_mode: Storage mode for the CompressedDict.
+        :param properties_to_cache: List of properties to cache.
+        :return: A FhirResource object.
+        """
+        return cast(
+            FhirResource,
+            super().from_dict(
+                d=d,
+                storage_mode=storage_mode,
+                properties_to_cache=properties_to_cache,
+            ),
+        )
