@@ -132,8 +132,8 @@ def test_nested_dict() -> None:
             }
         ],
         "period": {
-            "end": datetime.fromisoformat("2021-12-31"),
-            "start": datetime.fromisoformat("2021-01-01"),
+            "end": datetime.fromisoformat("2021-12-31").date(),
+            "start": datetime.fromisoformat("2021-01-01").date(),
         },
         "policyHolder": {"reference": "Patient/1234567890123456703", "type": "Patient"},
         "relationship": {
@@ -166,4 +166,6 @@ def test_nested_dict() -> None:
     deserialized = TypePreservationSerializer.deserialize(serialized)
     logger.info(deserialized)
 
+    assert isinstance(deserialized["period"]["start"], date)
+    assert isinstance(deserialized["period"]["end"], date)
     assert nested_dict == deserialized
