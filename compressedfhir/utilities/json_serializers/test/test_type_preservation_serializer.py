@@ -1,5 +1,7 @@
+import logging
 from datetime import datetime, timezone, date
 from decimal import Decimal
+from logging import Logger
 from typing import Any
 
 from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
@@ -64,6 +66,7 @@ def test_nested_dict() -> None:
     """
     Test serialization of nested dictionaries
     """
+    logger: Logger = logging.getLogger(__name__)
     nested_dict = {
         "beneficiary": {"reference": "Patient/1234567890123456703", "type": "Patient"},
         "class": [
@@ -156,7 +159,11 @@ def test_nested_dict() -> None:
         },
     }
 
+    logger.info("-------- Serialized --------")
     serialized = TypePreservationSerializer.serialize(nested_dict)
+    logger.info(serialized)
+    logger.info("-------- Deserialized --------")
     deserialized = TypePreservationSerializer.deserialize(serialized)
+    logger.info(deserialized)
 
     assert nested_dict == deserialized
