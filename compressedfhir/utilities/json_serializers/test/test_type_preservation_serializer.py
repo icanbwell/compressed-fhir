@@ -58,3 +58,105 @@ def test_nested_complex_data() -> None:
     deserialized = TypePreservationSerializer.deserialize(serialized)
 
     assert isinstance(deserialized["level1"]["level2"]["timestamp"], datetime)
+
+
+def test_nested_dict() -> None:
+    """
+    Test serialization of nested dictionaries
+    """
+    nested_dict = {
+        "beneficiary": {"reference": "Patient/1234567890123456703", "type": "Patient"},
+        "class": [
+            {
+                "name": "Aetna Plan",
+                "type": {
+                    "coding": [
+                        {
+                            "code": "plan",
+                            "display": "Plan",
+                            "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                        }
+                    ]
+                },
+                "value": "AE303",
+            }
+        ],
+        "costToBeneficiary": [
+            {
+                "type": {"text": "Annual Physical Exams NMC - In Network"},
+                "valueQuantity": {
+                    "system": "http://aetna.com/Medicare/CostToBeneficiary/ValueQuantity/code",
+                    "unit": "$",
+                    "value": 50.0,
+                },
+            }
+        ],
+        "id": "3456789012345670304",
+        "identifier": [
+            {
+                "system": "https://sources.aetna.com/coverage/identifier/membershipid/59",
+                "type": {
+                    "coding": [
+                        {
+                            "code": "SN",
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                        }
+                    ]
+                },
+                "value": "435679010300+AE303+2021-01-01",
+            },
+            {
+                "id": "uuid",
+                "system": "https://www.icanbwell.com/uuid",
+                "value": "92266603-aa8b-58c6-99bd-326fd1da1896",
+            },
+        ],
+        "meta": {
+            "security": [
+                {"code": "aetna", "system": "https://www.icanbwell.com/owner"},
+                {"code": "aetna", "system": "https://www.icanbwell.com/access"},
+                {"code": "aetna", "system": "https://www.icanbwell.com/vendor"},
+                {"code": "proa", "system": "https://www.icanbwell.com/connectionType"},
+            ],
+            "source": "http://mock-server:1080/test_patient_access_transformer/source/4_0_0/Coverage/3456789012345670304",
+        },
+        "network": "Medicare - MA/NY/NJ - Full Reciprocity",
+        "payor": [
+            {
+                "display": "Aetna",
+                "reference": "Organization/6667778889990000015",
+                "type": "Organization",
+            }
+        ],
+        "period": {
+            "end": datetime.fromisoformat("2021-12-31"),
+            "start": datetime.fromisoformat("2021-01-01"),
+        },
+        "policyHolder": {"reference": "Patient/1234567890123456703", "type": "Patient"},
+        "relationship": {
+            "coding": [
+                {
+                    "code": "self",
+                    "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                }
+            ]
+        },
+        "resourceType": "Coverage",
+        "status": "active",
+        "subscriber": {"reference": "Patient/1234567890123456703", "type": "Patient"},
+        "subscriberId": "435679010300",
+        "type": {
+            "coding": [
+                {
+                    "code": "PPO",
+                    "display": "preferred provider organization policy",
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                }
+            ]
+        },
+    }
+
+    serialized = TypePreservationSerializer.serialize(nested_dict)
+    deserialized = TypePreservationSerializer.deserialize(serialized)
+
+    assert nested_dict == deserialized
