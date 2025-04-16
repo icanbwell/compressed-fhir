@@ -33,7 +33,7 @@ class TypePreservationSerializer:
         cls,
         json_str: str,
         custom_decoders: Dict[str, Callable[[Any], Any]] | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         """
         Deserialize JSON string with advanced type reconstruction
@@ -51,5 +51,5 @@ class TypePreservationSerializer:
             object_hook=lambda dct: TypePreservationDecoder.decode(
                 dct, custom_decoders
             ),
-            **kwargs
+            **kwargs,
         )

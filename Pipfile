@@ -29,6 +29,10 @@ black = ">=24.2.0"
 msgpack-types = { version = ">=0.5.0" }
 # types-orjson is needed for type hints for orjson
 types-orjson = ">=3.6.2"
+# bandit is needed for security checks
+bandit = ">=1.8.3"
+# ruff is needed for linting
+ruff = ">=0.11.5"
 
 # These dependencies are required for pipenv-setup.  They conflict with ones above, so we install these
 # only when running pipenv-setup

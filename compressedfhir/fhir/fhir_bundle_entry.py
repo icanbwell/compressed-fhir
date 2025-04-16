@@ -217,7 +217,7 @@ class FhirBundleEntry:
         return (
             f"BundleEntry({self.resource.resource_type}/{self.resource.id})"
             if self.resource
-            else f"BundleEntry(Empty)"
+            else "BundleEntry(Empty)"
         )
 
     def copy(self) -> "FhirBundleEntry":

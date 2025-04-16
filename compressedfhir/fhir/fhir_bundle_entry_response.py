@@ -41,7 +41,6 @@ class FhirBundleEntryResponse:
     def from_dict(
         cls, d: Dict[str, Any] | OrderedDict[str, Any]
     ) -> "FhirBundleEntryResponse":
-
         date_last_modified: Optional[datetime] = None
         if "lastModified" in d:
             if isinstance(d["lastModified"], datetime):

@@ -42,10 +42,10 @@ def test_compress_invalid_input() -> None:
     Test compression with invalid input type
     """
     with pytest.raises(TypeError, match="Input must be a string"):
-        StringCompressor.compress(123)  # type: ignore
+        StringCompressor.compress(123)  # type:ignore[arg-type]
 
     with pytest.raises(TypeError, match="Input must be a string"):
-        StringCompressor.compress(None)  # type: ignore
+        StringCompressor.compress(None)  # type:ignore[arg-type]
 
 
 def test_decompress_invalid_input() -> None:
@@ -53,10 +53,10 @@ def test_decompress_invalid_input() -> None:
     Test decompression with invalid input type
     """
     with pytest.raises(TypeError, match="Input must be bytes or bytearray"):
-        StringCompressor.decompress("not bytes")  # type: ignore
+        StringCompressor.decompress("not bytes")  # type:ignore[arg-type]
 
     with pytest.raises(TypeError, match="Input must be bytes or bytearray"):
-        StringCompressor.decompress(123)  # type: ignore
+        StringCompressor.decompress(123)  # type:ignore[arg-type]
 
 
 # Safe Method Tests
