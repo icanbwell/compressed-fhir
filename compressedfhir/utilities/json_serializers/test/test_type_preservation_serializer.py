@@ -1,4 +1,5 @@
 import logging
+from collections import OrderedDict
 from datetime import datetime, timezone, date
 from decimal import Decimal
 from logging import Logger
@@ -68,6 +69,8 @@ def test_nested_dict() -> None:
     """
     logger: Logger = logging.getLogger(__name__)
     nested_dict = {
+        "resourceType": "Coverage",
+        "id": "3456789012345670304",
         "beneficiary": {"reference": "Patient/1234567890123456703", "type": "Patient"},
         "class": [
             {
@@ -94,7 +97,6 @@ def test_nested_dict() -> None:
                 },
             }
         ],
-        "id": "3456789012345670304",
         "identifier": [
             {
                 "system": "https://sources.aetna.com/coverage/identifier/membershipid/59",
@@ -144,7 +146,6 @@ def test_nested_dict() -> None:
                 }
             ]
         },
-        "resourceType": "Coverage",
         "status": "active",
         "subscriber": {"reference": "Patient/1234567890123456703", "type": "Patient"},
         "subscriberId": "435679010300",
@@ -160,11 +161,15 @@ def test_nested_dict() -> None:
     }
 
     logger.info("-------- Serialized --------")
-    serialized = TypePreservationSerializer.serialize(nested_dict)
+    serialized: str = TypePreservationSerializer.serialize(nested_dict)
     logger.info(serialized)
     logger.info("-------- Deserialized --------")
-    deserialized = TypePreservationSerializer.deserialize(serialized)
+    deserialized: OrderedDict[str, Any] = TypePreservationSerializer.deserialize(
+        serialized
+    )
     logger.info(deserialized)
+
+    assert isinstance(deserialized, OrderedDict)
 
     assert isinstance(deserialized["period"]["start"], date)
     assert isinstance(deserialized["period"]["end"], date)
