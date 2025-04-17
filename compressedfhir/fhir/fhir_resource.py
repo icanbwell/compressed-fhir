@@ -156,3 +156,11 @@ class FhirResource(CompressedDict[str, Any]):
             raw_dict
         )
         return json.dumps(obj=raw_dict, cls=FhirJSONEncoder)
+
+    def to_fhir_dict(self) -> Dict[str, Any]:
+        """
+        Convert the resource to a FHIR-compliant dictionary.
+
+        :return: A dictionary representation of the resource.
+        """
+        return cast(Dict[str, Any], json.loads(self.json()))
