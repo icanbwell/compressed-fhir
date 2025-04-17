@@ -26,7 +26,9 @@ class TypePreservationSerializer:
         Returns:
             JSON string representation
         """
-        return json.dumps(data, cls=TypePreservationEncoder, indent=2, **kwargs)
+        return json.dumps(
+            data, cls=TypePreservationEncoder, separators=(",", ":"), **kwargs
+        )
 
     @classmethod
     def deserialize(

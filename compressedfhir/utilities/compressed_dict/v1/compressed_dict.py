@@ -176,9 +176,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         assert isinstance(dictionary, OrderedDict)
         if storage_type == "compressed":
             # Serialize to JSON and compress with zlib
-            json_str = TypePreservationSerializer.serialize(
-                dictionary, separators=(",", ":")
-            )
+            json_str = TypePreservationSerializer.serialize(dictionary)
             return zlib.compress(
                 json_str.encode("utf-8"), level=zlib.Z_BEST_COMPRESSION
             )
@@ -219,9 +217,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             decompressed_bytes: bytes = zlib.decompress(serialized_dict_bytes)
             decoded_text: str = decompressed_bytes.decode("utf-8")
             # noinspection PyTypeChecker
-            decompressed_dict = TypePreservationSerializer.deserialize(
-                decoded_text, object_pairs_hook=OrderedDict
-            )
+            decompressed_dict = TypePreservationSerializer.deserialize(decoded_text)
             assert isinstance(decompressed_dict, OrderedDict)
             return cast(OrderedDict[K, V], decompressed_dict)
 
