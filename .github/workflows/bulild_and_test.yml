@@ -80,17 +80,17 @@ jobs:
           fail-on-empty: true
           title: Test results
 
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ${{ github.workspace }}/coverage-reports/coverage.xml
-          fail_ci_if_error: true
-
-      # Optional: Add coverage to GitHub summary
-      - name: Add Coverage to Summary
-        run: |
-          echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
-          echo "Uploaded to Codecov" >> $GITHUB_STEP_SUMMARY
+#      - name: Upload coverage reports to Codecov
+#        uses: codecov/codecov-action@v4
+#        with:
+#          files: ${{ github.workspace }}/coverage-reports/coverage.xml
+#          fail_ci_if_error: true
+#
+#      # Optional: Add coverage to GitHub summary
+#      - name: Add Coverage to Summary
+#        run: |
+#          echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
+#          echo "Uploaded to Codecov" >> $GITHUB_STEP_SUMMARY
 
       # Cleanup steps
       - name: Cleanup
