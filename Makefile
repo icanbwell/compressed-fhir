@@ -73,3 +73,21 @@ help: ## Show this help.
 pipenv-setup:devdocker ## Run pipenv-setup to update setup.py with latest dependencies
 	docker compose run --rm dev sh -c "pipenv run pipenv install --skip-lock --categories \"pipenvsetup\" && pipenv run pipenv-setup sync --pipfile" && \
 	make run-pre-commit
+
+.PHONY: coverage
+coverage: up ## Run code coverage and generate reports
+	mkdir -p reports
+	docker compose run --rm \
+        -v $(PWD)/reports:/reports \
+        --name compressedfhir_coverage \
+        dev pytest \
+        --cov=. \
+        --cov-report=term-missing \
+        --cov-report=xml:/reports/coverage.xml \
+        --cov-report=html:/reports/htmlcov \
+        --cov-fail-under=80 \
+        tests compressedfhir
+
+.PHONY: clean-coverage
+clean-coverage: ## Remove coverage reports
+	rm -rf reports/coverage.xml reports/htmlcov .coverage

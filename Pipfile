@@ -33,6 +33,8 @@ types-orjson = ">=3.6.2"
 bandit = ">=1.8.3"
 # ruff is needed for linting
 ruff = ">=0.11.5"
+# pytest-cov is needed for measuring test coverage
+pytest-cov = ">=6.1.1"
 
 # These dependencies are required for pipenv-setup.  They conflict with ones above, so we install these
 # only when running pipenv-setup
