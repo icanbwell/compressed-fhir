@@ -10,7 +10,6 @@ jobs:
   build_and_test:
     runs-on: ubuntu-latest
     steps:
-      # Existing steps remain the same...
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -33,20 +32,25 @@ jobs:
         run: |
           sudo chmod -R 777 ${{ github.workspace }}
 
-      - name: Create reports output folder
+      - name: Create reports output folders
         run: |
-          mkdir -p ${{ github.workspace }}/reports
-          chmod -R 777 ${{ github.workspace }}/reports
+          mkdir -p ${{ github.workspace }}/test-reports
+          mkdir -p ${{ github.workspace }}/coverage-reports
+          chmod -R 777 ${{ github.workspace }}/test-reports
+          chmod -R 777 ${{ github.workspace }}/coverage-reports
 
       # Modified test step to include coverage
       - name: tests with coverage
         run: |
-          docker compose run --rm -v ${{ github.workspace }}/reports:/reports dev pytest . \
+          docker compose run --rm \
+            -v ${{ github.workspace }}/test-reports:/test-reports \
+            -v ${{ github.workspace }}/coverage-reports:/coverage-reports \
+            dev pytest \
             --tb=auto \
-            --junitxml=/reports/test-results.xml \
+            --junitxml=/test-reports/test-results.xml \
             --cov=. \
-            --cov-report=xml:/reports/coverage.xml \
-            --cov-report=html:/reports/coverage-html \
+            --cov-report=xml=/coverage-reports/coverage.xml \
+            --cov-report=html=/coverage-reports/htmlcov \
             --cov-fail-under=80
 
       # Upload coverage reports
@@ -54,30 +58,38 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
-          path: |
-            ${{ github.workspace }}/reports/coverage.xml
-            ${{ github.workspace }}/reports/coverage-html
+          path: ${{ github.workspace }}/coverage-reports
         if: ${{ always() }}
 
-      # Existing test results upload and display steps...
+      # Optional: Publish coverage to Codecov
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v4
+#        with:
+#          files: ${{ github.workspace }}/coverage-reports/coverage.xml
+#          fail_ci_if_error: true
+#        env:
+#          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+#        if: ${{ always() }}
+
+      # Test results upload and display steps
       - name: Upload pytest test results
         uses: actions/upload-artifact@v4
         with:
           name: pytest-results
-          path: ${{ github.workspace }}/reports/**/*.xml
+          path: ${{ github.workspace }}/test-reports
         if: ${{ always() }}
 
       - name: Surface failing tests
         if: always()
         uses: pmeier/pytest-results-action@main
         with:
-          path: ${{ github.workspace }}/reports/*.xml
+          path: ${{ github.workspace }}/test-reports/*.xml
           summary: true
           display-options: fEX
           fail-on-empty: true
           title: Test results
 
-      # Cleanup steps remain the same...
+      # Cleanup steps
       - name: Cleanup
         if: always()
         run: |
