@@ -438,7 +438,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         if self._working_dict:
             return self._working_dict
         else:
-            # if the working dict is not None, return it but don't store it in the self._working_dict to keep memory low
+            # if the working dict is None, create and return it but don't store it
+            # in the self._working_dict to keep memory low
             return self.create_working_dict()
 
     def dict(self) -> OrderedDict[K, V]:
