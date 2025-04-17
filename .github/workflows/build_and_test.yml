@@ -1,0 +1,106 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pull docker images
+        run: docker compose pull
+
+      - name: pre-commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make run-pre-commit && make clean-pre-commit
+
+      - name: up
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make up
+
+      - name: Set correct permissions for tests
+        run: |
+          sudo chmod -R 777 ${{ github.workspace }}
+
+      - name: Create reports output folders
+        run: |
+          mkdir -p ${{ github.workspace }}/test-reports
+          mkdir -p ${{ github.workspace }}/coverage-reports
+          chmod -R 777 ${{ github.workspace }}/test-reports
+          chmod -R 777 ${{ github.workspace }}/coverage-reports
+
+      # Modified test step to include coverage
+      - name: tests with coverage
+        run: |
+          docker compose run --rm \
+            -v ${{ github.workspace }}/test-reports:/test-reports \
+            -v ${{ github.workspace }}/coverage-reports:/coverage-reports \
+            dev pytest \
+            --tb=auto \
+            --junitxml=/test-reports/test-results.xml \
+            --cov=. \
+            --cov-report=xml:/coverage-reports/coverage.xml \
+            --cov-report=html:/coverage-reports/htmlcov \
+            --cov-fail-under=80
+        continue-on-error: true
+
+      # Upload coverage reports
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: ${{ github.workspace }}/coverage-reports
+        if: ${{ always() }}
+
+      # Test results upload and display steps
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: ${{ github.workspace }}/test-reports
+        if: ${{ always() }}
+
+      - name: Surface failing tests
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          path: ${{ github.workspace }}/test-reports/*.xml
+          summary: true
+          display-options: fEX
+          fail-on-empty: true
+          title: Test results
+
+#      - name: Upload coverage reports to Codecov
+#        uses: codecov/codecov-action@v4
+#        with:
+#          files: ${{ github.workspace }}/coverage-reports/coverage.xml
+#          fail_ci_if_error: true
+#
+#      # Optional: Add coverage to GitHub summary
+#      - name: Add Coverage to Summary
+#        run: |
+#          echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
+#          echo "Uploaded to Codecov" >> $GITHUB_STEP_SUMMARY
+
+      # Cleanup steps
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans
+
+      - name: 'Cleanup build folder'
+        if: always()
+        run: |
+          ls -la ./
+          sudo rm -rf ${{ github.workspace }}/*
+          ls -la ./

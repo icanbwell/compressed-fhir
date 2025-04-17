@@ -43,7 +43,7 @@ class FhirResourceMap:
         """
         result: OrderedDict[str, Any] = OrderedDict[str, Any]()
         for key, value in self._resource_map.items():
-            result[key] = [resource.dict(remove_nulls=True) for resource in value]
+            result[key] = [resource.dict() for resource in value]
         return result
 
     def get(self, *, resource_type: str) -> Optional[FhirResourceList]:

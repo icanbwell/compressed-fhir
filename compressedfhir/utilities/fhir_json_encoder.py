@@ -18,7 +18,7 @@ class FhirJSONEncoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:
         # Existing type handlers
         if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)  # type:ignore
+            return dataclasses.asdict(o)  # type:ignore[arg-type]
 
         if isinstance(o, Enum):
             return o.value

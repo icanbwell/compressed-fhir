@@ -103,7 +103,7 @@ class FhirResourceList(BaseResourceList[FhirResource]):
         if len(self) == 0:
             return resources_by_type
 
-        entry: FhirResource
+        resource: FhirResource
         for resource in [r for r in self if r is not None]:
             resource_type: str = resource.resource_type or "unknown"
             if resource_type not in resources_by_type:

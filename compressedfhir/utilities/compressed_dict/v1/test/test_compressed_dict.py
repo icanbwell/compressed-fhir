@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from typing import Any, cast
 
@@ -232,7 +234,7 @@ def test_transaction_basic_raw_storage() -> None:
 
     # After transaction
     assert compressed_dict._transaction_depth == 0
-    assert compressed_dict.dict() == {
+    assert compressed_dict.raw_dict() == {
         "key1": "value1",
         "key2": "value2",
         "key3": "value3",
@@ -260,7 +262,7 @@ def test_transaction_nested_context() -> None:
         assert compressed_dict._transaction_depth == 1
 
     assert compressed_dict._transaction_depth == 0
-    assert compressed_dict.dict() == {"key1": "value1", "key2": "value2"}
+    assert compressed_dict.raw_dict() == {"key1": "value1", "key2": "value2"}
 
 
 def test_transaction_access_error() -> None:
@@ -309,7 +311,7 @@ def test_transaction_different_storage_modes() -> None:
         with compressed_dict.transaction() as d:
             d["key2"] = "value2"
 
-        assert compressed_dict.dict() == {"key1": "value1", "key2": "value2"}
+        assert compressed_dict.raw_dict() == {"key1": "value1", "key2": "value2"}
 
 
 def test_transaction_with_properties_to_cache() -> None:
@@ -328,7 +330,7 @@ def test_transaction_with_properties_to_cache() -> None:
     with compressed_dict.transaction() as d:
         d["key2"] = "value2"
 
-    assert compressed_dict.dict() == {
+    assert compressed_dict.raw_dict() == {
         "key1": "value1",
         "important_prop": "cached_value",
         "key2": "value2",
@@ -358,3 +360,108 @@ def test_transaction_error_handling() -> None:
         # Verify the dictionary state remains unchanged
         with compressed_dict.transaction() as d:
             assert d.dict() == {"key1": "value1", "key2": "value2"}
+
+
+def test_nested_dict_with_datetime() -> None:
+    nested_dict = {
+        "beneficiary": {"reference": "Patient/1234567890123456703", "type": "Patient"},
+        "class": [
+            {
+                "name": "Aetna Plan",
+                "type": {
+                    "coding": [
+                        {
+                            "code": "plan",
+                            "display": "Plan",
+                            "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                        }
+                    ]
+                },
+                "value": "AE303",
+            }
+        ],
+        "costToBeneficiary": [
+            {
+                "type": {"text": "Annual Physical Exams NMC - In Network"},
+                "valueQuantity": {
+                    "system": "http://aetna.com/Medicare/CostToBeneficiary/ValueQuantity/code",
+                    "unit": "$",
+                    "value": 50.0,
+                },
+            }
+        ],
+        "id": "3456789012345670304",
+        "identifier": [
+            {
+                "system": "https://sources.aetna.com/coverage/identifier/membershipid/59",
+                "type": {
+                    "coding": [
+                        {
+                            "code": "SN",
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                        }
+                    ]
+                },
+                "value": "435679010300+AE303+2021-01-01",
+            },
+            {
+                "id": "uuid",
+                "system": "https://www.icanbwell.com/uuid",
+                "value": "92266603-aa8b-58c6-99bd-326fd1da1896",
+            },
+        ],
+        "meta": {
+            "security": [
+                {"code": "aetna", "system": "https://www.icanbwell.com/owner"},
+                {"code": "aetna", "system": "https://www.icanbwell.com/access"},
+                {"code": "aetna", "system": "https://www.icanbwell.com/vendor"},
+                {"code": "proa", "system": "https://www.icanbwell.com/connectionType"},
+            ],
+            "source": "http://mock-server:1080/test_patient_access_transformer/source/4_0_0/Coverage/3456789012345670304",
+        },
+        "network": "Medicare - MA/NY/NJ - Full Reciprocity",
+        "payor": [
+            {
+                "display": "Aetna",
+                "reference": "Organization/6667778889990000015",
+                "type": "Organization",
+            }
+        ],
+        "period": {
+            "end": datetime.fromisoformat("2021-12-31").date(),
+            "start": datetime.fromisoformat("2021-01-01").date(),
+        },
+        "policyHolder": {"reference": "Patient/1234567890123456703", "type": "Patient"},
+        "relationship": {
+            "coding": [
+                {
+                    "code": "self",
+                    "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                }
+            ]
+        },
+        "resourceType": "Coverage",
+        "status": "active",
+        "subscriber": {"reference": "Patient/1234567890123456703", "type": "Patient"},
+        "subscriberId": "435679010300",
+        "type": {
+            "coding": [
+                {
+                    "code": "PPO",
+                    "display": "preferred provider organization policy",
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                }
+            ]
+        },
+    }
+
+    compressed_dict = CompressedDict(
+        initial_dict=nested_dict,
+        storage_mode=CompressedDictStorageMode.compressed(),
+        properties_to_cache=[],
+    )
+
+    plain_dict = compressed_dict.to_plain_dict()
+
+    assert plain_dict["period"]["start"] == nested_dict["period"]["start"]  # type: ignore[index]
+    assert plain_dict == nested_dict

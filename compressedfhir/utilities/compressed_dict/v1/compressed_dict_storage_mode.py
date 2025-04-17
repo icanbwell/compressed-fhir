@@ -4,13 +4,13 @@ from typing import Literal, TypeAlias
 CompressedDictStorageType: TypeAlias = Literal[
     "raw", "compressed", "msgpack", "compressed_msgpack"
 ]
-"""
-CompressedDictStorageType is a type alias for the different storage types
-raw: No compression
-compressed: Compressed using zlib
-msgpack: Compressed using msgpack
-compressed_msgpack: Compressed using msgpack with zlib
-"""
+###
+# CompressedDictStorageType is a type alias for the different storage types
+# raw: No compression
+# compressed: Compressed using zlib
+# msgpack: Compressed using msgpack
+# compressed_msgpack: Compressed using msgpack with zlib
+###
 
 
 @dataclasses.dataclass(slots=True)
