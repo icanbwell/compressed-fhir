@@ -290,12 +290,3 @@ class FhirBundle:
         :return: Plain dictionary representation of the Bundle
         """
         return OrderedDictToDictConverter.convert(self.dict())
-
-    def to_fhir_dict(self) -> Dict[str, Any]:
-        """
-        Get the fhir compatible dictionary representation of the resource.
-
-        Returns:
-            Plain dictionary
-        """
-        return cast(Dict[str, Any], json.loads(self.json()))

@@ -61,14 +61,10 @@ class FhirResource(CompressedDict[str, Any]):
             else None
         )
 
-    def json(self) -> str:
-        """Convert the resource to a JSON string."""
-        return json.dumps(obj=self.dict(), cls=FhirJSONEncoder)
-
     def __deepcopy__(self, memo: Dict[int, Any]) -> "FhirResource":
         """Create a copy of the resource."""
         return FhirResource(
-            initial_dict=super().dict(),
+            initial_dict=super().raw_dict(),
             storage_mode=self._storage_mode,
         )
 
@@ -83,29 +79,6 @@ class FhirResource(CompressedDict[str, Any]):
         :return: A new BundleEntry object with the same attributes.
         """
         return copy.deepcopy(self)
-
-    @override
-    def dict(self, *, remove_nulls: bool = True) -> OrderedDict[str, Any]:
-        """
-        Converts the FhirResource object to a dictionary.
-
-        :param remove_nulls: If True, removes None values from the dictionary.
-        :return: A dictionary representation of the FhirResource object.
-        """
-        ordered_dict = super().dict()
-        result: OrderedDict[str, Any] = copy.deepcopy(ordered_dict)
-        if remove_nulls:
-            result = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
-                result
-            )
-
-        return result
-
-    def remove_nulls(self) -> None:
-        """
-        Removes None values from the resource dictionary.
-        """
-        self.replace(value=self.dict(remove_nulls=True))
 
     @property
     def id(self) -> Optional[str]:
@@ -172,11 +145,14 @@ class FhirResource(CompressedDict[str, Any]):
             ),
         )
 
-    def to_fhir_dict(self) -> Dict[str, Any]:
-        """
-        Get the fhir compatible dictionary representation of the resource.
+    @override
+    def json(self) -> str:
+        """Convert the resource to a JSON string."""
 
-        Returns:
-            Plain dictionary
-        """
-        return cast(Dict[str, Any], json.loads(self.json()))
+        # working_dict preserves the python types so create a fhir friendly version
+        raw_dict: OrderedDict[str, Any] = self.raw_dict()
+
+        raw_dict = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
+            raw_dict
+        )
+        return json.dumps(obj=raw_dict, cls=FhirJSONEncoder)

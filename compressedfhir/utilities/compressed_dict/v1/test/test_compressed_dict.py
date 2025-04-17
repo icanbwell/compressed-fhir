@@ -234,7 +234,7 @@ def test_transaction_basic_raw_storage() -> None:
 
     # After transaction
     assert compressed_dict._transaction_depth == 0
-    assert compressed_dict.dict() == {
+    assert compressed_dict.raw_dict() == {
         "key1": "value1",
         "key2": "value2",
         "key3": "value3",
@@ -262,7 +262,7 @@ def test_transaction_nested_context() -> None:
         assert compressed_dict._transaction_depth == 1
 
     assert compressed_dict._transaction_depth == 0
-    assert compressed_dict.dict() == {"key1": "value1", "key2": "value2"}
+    assert compressed_dict.raw_dict() == {"key1": "value1", "key2": "value2"}
 
 
 def test_transaction_access_error() -> None:
@@ -311,7 +311,7 @@ def test_transaction_different_storage_modes() -> None:
         with compressed_dict.transaction() as d:
             d["key2"] = "value2"
 
-        assert compressed_dict.dict() == {"key1": "value1", "key2": "value2"}
+        assert compressed_dict.raw_dict() == {"key1": "value1", "key2": "value2"}
 
 
 def test_transaction_with_properties_to_cache() -> None:
@@ -330,7 +330,7 @@ def test_transaction_with_properties_to_cache() -> None:
     with compressed_dict.transaction() as d:
         d["key2"] = "value2"
 
-    assert compressed_dict.dict() == {
+    assert compressed_dict.raw_dict() == {
         "key1": "value1",
         "important_prop": "cached_value",
         "key2": "value2",
