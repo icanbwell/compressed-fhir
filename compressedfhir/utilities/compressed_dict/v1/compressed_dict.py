@@ -429,6 +429,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         """
         Returns the raw dictionary.  Deserializes if necessary.
         Note that this dictionary preserves the python types so it is not FHIR friendly.
+        For example, datetime will be represented as a datetime object instead of iso format string per FHIR.
         Use dict() if you want a FHIR friendly version.
 
         Returns:
@@ -443,6 +444,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
     def dict(self) -> OrderedDict[K, V]:
         """
         Convert to a FHIR friendly dictionary where the python types like datetime are converted to string versions
+        For example, datetime will be represented as a iso format string per FHIR instead of a python datetime object.
 
         Returns:
             FHIR friendly dictionary
@@ -585,6 +587,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         """
         # Create a new instance with the same storage mode
         new_instance = CompressedDict(
+            # we use raw_dict() instead of dict() so we can preserve python data types like datetime
             initial_dict=copy.deepcopy(self.raw_dict()),
             storage_mode=self._storage_mode,
             properties_to_cache=self._properties_to_cache,
