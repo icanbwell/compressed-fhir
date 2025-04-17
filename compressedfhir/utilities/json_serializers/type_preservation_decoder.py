@@ -1,4 +1,5 @@
 import logging
+from collections import OrderedDict
 from datetime import datetime, date
 from decimal import Decimal
 from logging import Logger
@@ -15,6 +16,7 @@ class TypePreservationDecoder:
         cls,
         dct: Union[str, Dict[str, Any], List[Any]],
         custom_decoders: Optional[Dict[str, Callable[[Any], Any]]] = None,
+        use_ordered_dict: bool = True,
     ) -> Any:
         """
         Decode complex types, including nested datetime fields
@@ -22,6 +24,7 @@ class TypePreservationDecoder:
         Args:
             dct: Dictionary to decode
             custom_decoders: Optional additional custom decoders
+            use_ordered_dict: Flag to control whether to use OrderedDict or not
 
         Returns:
             Reconstructed object or original dictionary
@@ -93,7 +96,9 @@ class TypePreservationDecoder:
                             return value
 
                 # Recursively decode dictionary values
-                return {k: recursive_decode(v) for k, v in value.items()}
+                # Conditionally use OrderedDict or regular dict
+                dict_type = OrderedDict if use_ordered_dict else dict
+                return dict_type((k, recursive_decode(v)) for k, v in value.items())
 
             # Recursively decode list or tuple
             elif isinstance(value, (list, tuple)):
