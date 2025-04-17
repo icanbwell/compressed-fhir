@@ -171,3 +171,12 @@ class FhirResource(CompressedDict[str, Any]):
                 properties_to_cache=properties_to_cache,
             ),
         )
+
+    def to_fhir_dict(self) -> Dict[str, Any]:
+        """
+        Get the fhir compatible dictionary representation of the resource.
+
+        Returns:
+            Plain dictionary
+        """
+        return cast(Dict[str, Any], json.loads(self.json()))
