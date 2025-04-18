@@ -48,10 +48,14 @@ def test_complex_data_serialization() -> None:
     # Verify types
     assert isinstance(deserialized["timestamp"], datetime)
     assert deserialized["timestamp"] == complex_data["timestamp"]
+    assert isinstance(deserialized["timestamp_pst"], datetime)
+    assert deserialized["timestamp_pst"] == complex_data["timestamp_pst"]
     assert isinstance(deserialized["today"], date)
     assert deserialized["today"] == complex_data["today"]
     assert isinstance(deserialized["my_time"], time)
     assert deserialized["my_time"] == complex_data["my_time"]
+    assert isinstance(deserialized["my_time_pst"], time)
+    assert deserialized["my_time_pst"] == complex_data["my_time_pst"]
     assert isinstance(deserialized["precise_value"], Decimal)
     assert deserialized["precise_value"] == complex_data["precise_value"]
     assert isinstance(deserialized["complex_number"], complex)
