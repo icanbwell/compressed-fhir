@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, time
 from decimal import Decimal
 from typing import Type, Any, Dict, Optional
 import pytest
@@ -40,7 +40,22 @@ class TestCustomObject:
             {"__type__": "datetime", "iso": "2023-01-01T00:00:00+00:00"},
             datetime,
         ),
+        (
+            "datetime",
+            {
+                "__type__": "datetime",
+                "iso": "2023-01-01T00:00:00-08:00",
+                "tzinfo": "Pacific/Honolulu",
+            },
+            datetime,
+        ),
         ("date", {"__type__": "date", "iso": "2023-01-01"}, date),
+        ("time", {"__type__": "time", "iso": "14:30:15"}, time),
+        (
+            "time",
+            {"__type__": "time", "iso": "14:30:15", "tzinfo": "Pacific/Honolulu"},
+            time,
+        ),
         ("decimal", {"__type__": "decimal", "value": "3.14"}, Decimal),
         ("complex", {"__type__": "complex", "real": 3, "imag": 4}, complex),
         ("bytes", {"__type__": "bytes", "value": "test"}, bytes),

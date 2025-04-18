@@ -1,6 +1,9 @@
-from datetime import datetime, timezone, date
+import logging
+from datetime import datetime, timezone, date, time
 from decimal import Decimal
+from logging import Logger
 from typing import Type, Any
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -24,7 +27,14 @@ class TestCustomObject:
     "input_type, input_value, expected_type",
     [
         (datetime, datetime(2023, 1, 1, tzinfo=timezone.utc), "datetime"),
+        (
+            datetime,
+            datetime(2023, 1, 1, tzinfo=ZoneInfo("Pacific/Honolulu")),
+            "datetime",
+        ),
         (date, date(2023, 1, 1), "date"),
+        (time, time(14, 30, 15), "time"),
+        (time, time(14, 30, 15, tzinfo=ZoneInfo("Pacific/Honolulu")), "time"),
         (Decimal, Decimal("3.14"), "decimal"),
         (complex, 3 + 4j, "complex"),
         (bytes, b"test", "bytes"),
@@ -37,9 +47,11 @@ def test_complex_type_serialization(
     """
     Test serialization of various complex types
     """
+    logger: Logger = logging.getLogger(__name__)
     encoder = TypePreservationEncoder()
     serialized = encoder.default(input_value)
 
+    logger.info(serialized)
     assert isinstance(serialized, dict)
     assert serialized.get("__type__") == expected_type
 

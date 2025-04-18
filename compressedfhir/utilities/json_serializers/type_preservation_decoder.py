@@ -1,9 +1,10 @@
 import logging
 from collections import OrderedDict
-from datetime import datetime, date
+from datetime import datetime, date, time
 from decimal import Decimal
 from logging import Logger
 from typing import Any, Dict, Callable, Optional, Union, cast, List
+from zoneinfo import ZoneInfo
 
 
 class TypePreservationDecoder:
@@ -46,9 +47,33 @@ class TypePreservationDecoder:
                 return date.fromisoformat(d["iso"])
             return cast(date, d)
 
+        def time_decoder(d: Union[str, Dict[str, Any]]) -> time:
+            if isinstance(d, str):
+                return time.fromisoformat(d)
+            elif isinstance(d, dict) and "iso" in d:
+                # Extract ISO time string
+                iso_time: str = d["iso"]
+
+                # Parse time from ISO format
+                parsed_time = time.fromisoformat(iso_time)
+
+                # Add timezone if specified
+                tz_info = d.get("tzinfo")
+                if tz_info:
+                    try:
+                        tz_aware_time = parsed_time.replace(tzinfo=ZoneInfo(tz_info))
+                        return tz_aware_time
+                    except Exception as e:
+                        raise ValueError(f"Invalid timezone: {tz_info}") from e
+                else:
+                    # If no timezone info, return naive time
+                    return parsed_time
+            return cast(time, d)
+
         default_decoders: Dict[str, Callable[[Any], Any]] = {
             "datetime": datetime_decoder,
             "date": date_decoder,
+            "time": time_decoder,
             "decimal": lambda d: Decimal(d["value"] if isinstance(d, dict) else d),
             "complex": lambda d: complex(d["real"], d["imag"])
             if isinstance(d, dict)

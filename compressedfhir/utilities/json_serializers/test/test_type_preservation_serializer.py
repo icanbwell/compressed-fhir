@@ -1,9 +1,10 @@
 import logging
 from collections import OrderedDict
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, time
 from decimal import Decimal
 from logging import Logger
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
     TypePreservationSerializer,
@@ -26,8 +27,12 @@ def test_complex_data_serialization() -> None:
     Test serialization and deserialization of complex data
     """
     complex_data = {
+        "timestamp_no_tz": datetime.now(),
         "timestamp": datetime.now(timezone.utc),
+        "timestamp_pst": datetime.now(ZoneInfo("Pacific/Honolulu")),
         "today": date.today(),
+        "my_time": time(14, 30, 15),
+        "my_time_pst": time(14, 30, 15, tzinfo=ZoneInfo("Pacific/Honolulu")),
         "precise_value": Decimal("3.14159"),
         "complex_number": 3 + 4j,
         "byte_data": b"Hello",
@@ -42,13 +47,29 @@ def test_complex_data_serialization() -> None:
     deserialized = TypePreservationSerializer.deserialize(serialized)
 
     # Verify types
+    assert isinstance(deserialized, OrderedDict)
+    assert isinstance(deserialized["timestamp_no_tz"], datetime)
+    assert deserialized["timestamp_no_tz"] == complex_data["timestamp_no_tz"]
     assert isinstance(deserialized["timestamp"], datetime)
+    assert deserialized["timestamp"] == complex_data["timestamp"]
+    assert isinstance(deserialized["timestamp_pst"], datetime)
+    assert deserialized["timestamp_pst"] == complex_data["timestamp_pst"]
     assert isinstance(deserialized["today"], date)
+    assert deserialized["today"] == complex_data["today"]
+    assert isinstance(deserialized["my_time"], time)
+    assert deserialized["my_time"] == complex_data["my_time"]
+    assert isinstance(deserialized["my_time_pst"], time)
+    assert deserialized["my_time_pst"] == complex_data["my_time_pst"]
     assert isinstance(deserialized["precise_value"], Decimal)
+    assert deserialized["precise_value"] == complex_data["precise_value"]
     assert isinstance(deserialized["complex_number"], complex)
+    assert deserialized["complex_number"] == complex_data["complex_number"]
     assert isinstance(deserialized["byte_data"], bytes)
+    assert deserialized["byte_data"] == complex_data["byte_data"]
     assert isinstance(deserialized["unique_items"], set)
+    assert deserialized["unique_items"] == complex_data["unique_items"]
     assert isinstance(deserialized["custom_obj"], TestCustomObject)
+    assert deserialized["custom_obj"] == complex_data["custom_obj"]
 
 
 def test_nested_complex_data() -> None:
