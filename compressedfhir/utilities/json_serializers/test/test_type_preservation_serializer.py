@@ -4,6 +4,7 @@ from datetime import datetime, timezone, date, time
 from decimal import Decimal
 from logging import Logger
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
     TypePreservationSerializer,
@@ -27,8 +28,10 @@ def test_complex_data_serialization() -> None:
     """
     complex_data = {
         "timestamp": datetime.now(timezone.utc),
+        "timestamp_pst": datetime.now(ZoneInfo("America/Los_Angeles")),
         "today": date.today(),
         "my_time": time(14, 30, 15),
+        "my_time_pst": time(14, 30, 15, tzinfo=ZoneInfo("America/Los_Angeles")),
         "precise_value": Decimal("3.14159"),
         "complex_number": 3 + 4j,
         "byte_data": b"Hello",
