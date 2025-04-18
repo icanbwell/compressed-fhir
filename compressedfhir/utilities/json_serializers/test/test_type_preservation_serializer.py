@@ -44,13 +44,21 @@ def test_complex_data_serialization() -> None:
 
     # Verify types
     assert isinstance(deserialized["timestamp"], datetime)
+    assert deserialized["timestamp"] == complex_data["timestamp"]
     assert isinstance(deserialized["today"], date)
+    assert deserialized["today"] == complex_data["today"]
     assert isinstance(deserialized["my_time"], time)
+    assert deserialized["my_time"] == complex_data["my_time"]
     assert isinstance(deserialized["precise_value"], Decimal)
+    assert deserialized["precise_value"] == complex_data["precise_value"]
     assert isinstance(deserialized["complex_number"], complex)
+    assert deserialized["complex_number"] == complex_data["complex_number"]
     assert isinstance(deserialized["byte_data"], bytes)
+    assert deserialized["byte_data"] == complex_data["byte_data"]
     assert isinstance(deserialized["unique_items"], set)
+    assert deserialized["unique_items"] == complex_data["unique_items"]
     assert isinstance(deserialized["custom_obj"], TestCustomObject)
+    assert deserialized["custom_obj"] == complex_data["custom_obj"]
 
 
 def test_nested_complex_data() -> None:
