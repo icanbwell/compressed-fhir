@@ -1,6 +1,6 @@
 import json
 from collections.abc import Callable
-from datetime import datetime, date
+from datetime import datetime, date, time
 from decimal import Decimal
 from typing import Any, Dict, Type
 
@@ -17,6 +17,11 @@ class TypePreservationEncoder(json.JSONEncoder):
             "tzinfo": str(dt.tzinfo) if dt.tzinfo else None,
         },
         date: lambda d: {"__type__": "date", "iso": d.isoformat()},
+        time: lambda t: {
+            "__type__": "time",
+            "iso": t.isoformat(),
+            "tzinfo": str(t.tzinfo) if t.tzinfo else None,
+        },
         Decimal: lambda d: {"__type__": "decimal", "value": str(d)},
         complex: lambda c: {"__type__": "complex", "real": c.real, "imag": c.imag},
         bytes: lambda b: {"__type__": "bytes", "value": b.decode("latin-1")},

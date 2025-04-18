@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, time
 from decimal import Decimal
 from typing import Type, Any
 
@@ -25,6 +25,7 @@ class TestCustomObject:
     [
         (datetime, datetime(2023, 1, 1, tzinfo=timezone.utc), "datetime"),
         (date, date(2023, 1, 1), "date"),
+        (time(14, 30, 15), "time"),
         (Decimal, Decimal("3.14"), "decimal"),
         (complex, 3 + 4j, "complex"),
         (bytes, b"test", "bytes"),

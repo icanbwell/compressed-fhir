@@ -1,6 +1,6 @@
 import logging
 from collections import OrderedDict
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, time
 from decimal import Decimal
 from logging import Logger
 from typing import Any
@@ -28,6 +28,7 @@ def test_complex_data_serialization() -> None:
     complex_data = {
         "timestamp": datetime.now(timezone.utc),
         "today": date.today(),
+        "my_time": time(14, 30, 15),
         "precise_value": Decimal("3.14159"),
         "complex_number": 3 + 4j,
         "byte_data": b"Hello",
@@ -44,6 +45,7 @@ def test_complex_data_serialization() -> None:
     # Verify types
     assert isinstance(deserialized["timestamp"], datetime)
     assert isinstance(deserialized["today"], date)
+    assert isinstance(deserialized["my_time"], time)
     assert isinstance(deserialized["precise_value"], Decimal)
     assert isinstance(deserialized["complex_number"], complex)
     assert isinstance(deserialized["byte_data"], bytes)
