@@ -41,7 +41,7 @@ class TestCustomObject:
             datetime,
         ),
         ("date", {"__type__": "date", "iso": "2023-01-01"}, date),
-        ({"__type__": "time", "iso": "14:30:15"}, time(14, 30, 15)),
+        ("time", {"__type__": "time", "iso": "14:30:15"}, time(14, 30, 15)),
         ("decimal", {"__type__": "decimal", "value": "3.14"}, Decimal),
         ("complex", {"__type__": "complex", "real": 3, "imag": 4}, complex),
         ("bytes", {"__type__": "bytes", "value": "test"}, bytes),
