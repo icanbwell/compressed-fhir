@@ -45,7 +45,7 @@ class TestCustomObject:
             {
                 "__type__": "datetime",
                 "iso": "2023-01-01T00:00:00-08:00",
-                "tzinfo": "America/Los_Angeles",
+                "tzinfo": "Pacific/Honolulu",
             },
             datetime,
         ),
@@ -53,7 +53,7 @@ class TestCustomObject:
         ("time", {"__type__": "time", "iso": "14:30:15"}, time),
         (
             "time",
-            {"__type__": "time", "iso": "14:30:15", "tzinfo": "America/Los_Angeles"},
+            {"__type__": "time", "iso": "14:30:15", "tzinfo": "Pacific/Honolulu"},
             time,
         ),
         ("decimal", {"__type__": "decimal", "value": "3.14"}, Decimal),

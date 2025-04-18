@@ -28,10 +28,10 @@ def test_complex_data_serialization() -> None:
     """
     complex_data = {
         "timestamp": datetime.now(timezone.utc),
-        "timestamp_pst": datetime.now(ZoneInfo("America/Los_Angeles")),
+        "timestamp_pst": datetime.now(ZoneInfo("Pacific/Honolulu")),
         "today": date.today(),
         "my_time": time(14, 30, 15),
-        "my_time_pst": time(14, 30, 15, tzinfo=ZoneInfo("America/Los_Angeles")),
+        "my_time_pst": time(14, 30, 15, tzinfo=ZoneInfo("Pacific/Honolulu")),
         "precise_value": Decimal("3.14159"),
         "complex_number": 3 + 4j,
         "byte_data": b"Hello",

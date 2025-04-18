@@ -4,6 +4,7 @@ from datetime import datetime, date, time
 from decimal import Decimal
 from logging import Logger
 from typing import Any, Dict, Callable, Optional, Union, cast, List
+from zoneinfo import ZoneInfo
 
 
 class TypePreservationDecoder:
@@ -50,7 +51,23 @@ class TypePreservationDecoder:
             if isinstance(d, str):
                 return time.fromisoformat(d)
             elif isinstance(d, dict) and "iso" in d:
-                return time.fromisoformat(d["iso"])
+                # Extract ISO time string
+                iso_time: str = d["iso"]
+
+                # Parse time from ISO format
+                parsed_time = time.fromisoformat(iso_time)
+
+                # Add timezone if specified
+                tz_info = d.get("tzinfo")
+                if tz_info:
+                    try:
+                        tz_aware_time = parsed_time.replace(tzinfo=ZoneInfo(tz_info))
+                        return tz_aware_time
+                    except Exception as e:
+                        raise ValueError(f"Invalid timezone: {tz_info}") from e
+                else:
+                    # If no timezone info, return naive time
+                    return parsed_time
             return cast(time, d)
 
         default_decoders: Dict[str, Callable[[Any], Any]] = {
