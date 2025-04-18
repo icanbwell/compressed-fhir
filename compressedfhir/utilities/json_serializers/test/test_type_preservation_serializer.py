@@ -27,6 +27,7 @@ def test_complex_data_serialization() -> None:
     Test serialization and deserialization of complex data
     """
     complex_data = {
+        "timestamp_no_tz": datetime.now(),
         "timestamp": datetime.now(timezone.utc),
         "timestamp_pst": datetime.now(ZoneInfo("Pacific/Honolulu")),
         "today": date.today(),
@@ -46,6 +47,9 @@ def test_complex_data_serialization() -> None:
     deserialized = TypePreservationSerializer.deserialize(serialized)
 
     # Verify types
+    assert isinstance(deserialized, OrderedDict)
+    assert isinstance(deserialized["timestamp_no_tz"], datetime)
+    assert deserialized["timestamp_no_tz"] == complex_data["timestamp_no_tz"]
     assert isinstance(deserialized["timestamp"], datetime)
     assert deserialized["timestamp"] == complex_data["timestamp"]
     assert isinstance(deserialized["timestamp_pst"], datetime)
