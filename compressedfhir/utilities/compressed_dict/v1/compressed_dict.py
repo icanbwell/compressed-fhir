@@ -78,13 +78,17 @@ class CompressedDict[K, V](MutableMapping[K, V]):
 
         # Populate initial dictionary if provided
         if initial_dict:
-            # Ensure we use an OrderedDict to maintain original order
-            initial_dict_ordered = (
-                initial_dict
-                if isinstance(initial_dict, OrderedDict)
-                else OrderedDict[K, V](initial_dict)
-            )
-            self.replace(value=initial_dict_ordered)
+            if self._storage_mode.storage_type != "raw":
+                # Ensure we use an OrderedDict to maintain original order
+                initial_dict_ordered = (
+                    initial_dict
+                    if isinstance(initial_dict, OrderedDict)
+                    else OrderedDict[K, V](initial_dict)
+                )
+                self.replace(value=initial_dict_ordered)
+            else:
+                self._update_serialized_dict(current_dict=initial_dict)
+
 
     @contextmanager
     def transaction(self) -> Iterator["CompressedDict[K, V]"]:
@@ -254,7 +258,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         Returns:
             Current dictionary state
         """
-
+        if self._storage_mode.storage_type == "raw":
+            return self._raw_dict
         if self._working_dict is None:
             raise CompressedDictAccessError(
                 "Dictionary access is only allowed within an transaction() block. "
@@ -282,11 +287,6 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         if self._properties_to_cache and key in self._properties_to_cache:
             return self._cached_properties[key]
 
-        if self._working_dict is None:
-            raise CompressedDictAccessError(
-                "Dictionary access is only allowed within an transaction() block. "
-                "Use 'with compressed_dict.transaction() as d:' to access the dictionary."
-            )
         return self._get_dict()[key]
 
     def __setitem__(self, key: K, value: V) -> None:
@@ -456,7 +456,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
                 self.json(),
                 object_pairs_hook=lambda pairs: OrderedDict(pairs),
             ),
-        )
+        ) if self._storage_mode != CompressedDictStorageMode.raw() else self.raw_dict()
 
     def json(self) -> str:
         """Convert the resource to a JSON string."""
