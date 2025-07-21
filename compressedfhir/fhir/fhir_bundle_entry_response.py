@@ -27,7 +27,7 @@ class FhirBundleEntryResponse:
         self.etag: Optional[str] = etag
         self.location: Optional[str] = location
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         result: OrderedDict[str, Any] = OrderedDict[str, Any]({"status": self.status})
         if self.lastModified is not None:
             result["lastModified"] = self.lastModified.isoformat()

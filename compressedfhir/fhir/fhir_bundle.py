@@ -68,7 +68,7 @@ class FhirBundle:
         self.link: Optional[List[FhirLink]] = link
         self.meta: Optional[FhirMeta] = meta
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         entries: List[Dict[str, Any]] | None = (
             [entry.dict() for entry in self.entry] if self.entry else None
         )
@@ -289,4 +289,8 @@ class FhirBundle:
 
         :return: Plain dictionary representation of the Bundle
         """
-        return OrderedDictToDictConverter.convert(self.dict())
+        return (
+            OrderedDictToDictConverter.convert(self.dict())  # type: ignore[arg-type]
+            if isinstance(self.dict(), OrderedDict)
+            else self.dict()
+        )

@@ -134,7 +134,7 @@ class FhirBundleEntry:
         else:
             self._resource = None
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         result: OrderedDict[str, Any] = OrderedDict[str, Any]()
         if self.fullUrl is not None:
             result["fullUrl"] = self.fullUrl

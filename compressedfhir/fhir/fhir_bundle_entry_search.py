@@ -21,7 +21,7 @@ class FhirBundleEntrySearch:
         self.mode: Optional[str] = mode
         self.score: Optional[float] = score
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         """
         Converts the FhirBundleEntrySearch instance to a dictionary.
 
