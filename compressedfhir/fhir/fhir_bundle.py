@@ -163,13 +163,13 @@ class FhirBundle:
                 FhirBundleEntryList(
                     [
                         FhirBundleEntry.from_dict(entry, storage_mode=storage_mode)
-                        for entry in data.get("entry", [])
+                        for entry in (data.get("entry", []) or [])
                     ]
                 )
                 if "entry" in data
                 else FhirBundleEntryList()
             ),
-            link=[FhirLink.from_dict(link) for link in data.get("link", [])],
+            link=[FhirLink.from_dict(link) for link in (data.get("link", []) or [])],
             meta=data.get("meta"),
         )
         return bundle
