@@ -132,7 +132,7 @@ class FhirBundle:
     def from_dict(
         cls,
         data: OrderedDict[str, Any] | Dict[str, Any],
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
     ) -> "FhirBundle":
         """
         Creates a FhirBundle object from a dictionary.
@@ -141,6 +141,9 @@ class FhirBundle:
         :param storage_mode: The storage mode for the Bundle.
         :return: A FhirBundle object.
         """
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
+
         bundle = cls(
             id_=data.get("id") if isinstance(data.get("id"), str) else None,
             identifier=(
