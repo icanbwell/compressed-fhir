@@ -681,7 +681,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         cls,
         d: Dict[K, V],
         *,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
         properties_to_cache: List[K] | None = None,
     ) -> "CompressedDict[K, V]":
         """
@@ -692,6 +692,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         :param properties_to_cache: Optional list of properties to cache
         :return: A FhirResource object.
         """
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         return cls(
             initial_dict=d,
             storage_mode=storage_mode,

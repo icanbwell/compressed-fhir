@@ -25,9 +25,11 @@ class FhirResource(CompressedDict[str, Any]):
         initial_dict: Dict[str, Any] | OrderedDict[str, Any] | None = None,
         *,
         meta: Optional[FhirMeta] = None,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
         properties_to_cache: Optional[List[str]] = None,
     ) -> None:
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         if meta is not None:
             initial_dict = initial_dict or {}
             initial_dict["meta"] = meta.dict()
@@ -125,7 +127,7 @@ class FhirResource(CompressedDict[str, Any]):
         cls,
         d: Dict[str, Any],
         *,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
         properties_to_cache: List[str] | None = None,
     ) -> "FhirResource":
         """
@@ -136,6 +138,8 @@ class FhirResource(CompressedDict[str, Any]):
         :param properties_to_cache: List of properties to cache.
         :return: A FhirResource object.
         """
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         return cast(
             FhirResource,
             super().from_dict(
