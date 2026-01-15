@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Any, Dict, OrderedDict
+from typing import Any, Dict
 
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
@@ -17,8 +17,8 @@ class FhirMeta:
     security: list[Dict[str, Any]] | None = None
     tag: list[str] | None = None
 
-    def dict(self) -> OrderedDict[str, Any]:
-        result: OrderedDict[str, Any] = OrderedDict[str, Any]()
+    def dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
         if self.version_id is not None:
             result["versionId"] = self.version_id
         if self.last_updated is not None:

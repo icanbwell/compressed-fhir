@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Dict, Any, OrderedDict
+from typing import Optional, Dict, Any
 
 from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
@@ -21,13 +21,13 @@ class FhirBundleEntrySearch:
         self.mode: Optional[str] = mode
         self.score: Optional[float] = score
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> Dict[str, Any]:
         """
         Converts the FhirBundleEntrySearch instance to a dictionary.
 
         :return: A dictionary representation of the FhirBundleEntrySearch instance.
         """
-        result: OrderedDict[str, Any] = OrderedDict[str, Any]()
+        result: Dict[str, Any] = {}
         if self.mode is not None:
             result["mode"] = self.mode
         if self.score is not None:
@@ -37,7 +37,7 @@ class FhirBundleEntrySearch:
 
     @classmethod
     def from_dict(
-        cls, data: Dict[str, Any] | OrderedDict[str, Any]
+        cls, data: Dict[str, Any]
     ) -> "FhirBundleEntrySearch":
         """
         Creates a FhirBundleEntrySearch object from a dictionary.

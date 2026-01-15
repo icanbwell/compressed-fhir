@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Optional, OrderedDict
+from typing import Any, Dict, Optional
 
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
@@ -27,8 +27,8 @@ class FhirBundleEntryResponse:
         self.etag: Optional[str] = etag
         self.location: Optional[str] = location
 
-    def dict(self) -> OrderedDict[str, Any]:
-        result: OrderedDict[str, Any] = OrderedDict[str, Any]({"status": self.status})
+    def dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = ({"status": self.status})
         if self.lastModified is not None:
             result["lastModified"] = self.lastModified.isoformat()
         if self.etag is not None:
@@ -39,7 +39,7 @@ class FhirBundleEntryResponse:
 
     @classmethod
     def from_dict(
-        cls, d: Dict[str, Any] | OrderedDict[str, Any]
+        cls, d: Dict[str, Any]
     ) -> "FhirBundleEntryResponse":
         date_last_modified: Optional[datetime] = None
         if "lastModified" in d:

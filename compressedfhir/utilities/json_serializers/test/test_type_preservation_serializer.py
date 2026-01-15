@@ -1,5 +1,4 @@
 import logging
-from collections import OrderedDict
 from datetime import datetime, timezone, date, time
 from decimal import Decimal
 from logging import Logger
@@ -47,7 +46,7 @@ def test_complex_data_serialization() -> None:
     deserialized = TypePreservationSerializer.deserialize(serialized)
 
     # Verify types
-    assert isinstance(deserialized, OrderedDict)
+    assert isinstance(deserialized, dict)
     assert isinstance(deserialized["timestamp_no_tz"], datetime)
     assert deserialized["timestamp_no_tz"] == complex_data["timestamp_no_tz"]
     assert isinstance(deserialized["timestamp"], datetime)
@@ -185,12 +184,12 @@ def test_nested_dict() -> None:
     serialized: str = TypePreservationSerializer.serialize(nested_dict)
     logger.info(serialized)
     logger.info("-------- Deserialized --------")
-    deserialized: OrderedDict[str, Any] = TypePreservationSerializer.deserialize(
+    deserialized: dict[str, Any] = TypePreservationSerializer.deserialize(
         serialized
     )
     logger.info(deserialized)
 
-    assert isinstance(deserialized, OrderedDict)
+    assert isinstance(deserialized, dict)
 
     assert isinstance(deserialized["period"]["start"], date)
     assert isinstance(deserialized["period"]["end"], date)

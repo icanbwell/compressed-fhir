@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, cast, Union, Optional, OrderedDict, overload
+from typing import Any, Dict, List, cast, Union, Optional
 from datetime import datetime, date
 
 import orjson
@@ -57,21 +57,9 @@ class FhirClientJsonHelpers:
             }
 
     @staticmethod
-    @overload
     def remove_empty_elements_from_ordered_dict(
-        d: List[OrderedDict[str, Any]],
-    ) -> List[OrderedDict[str, Any]]: ...
-
-    @staticmethod
-    @overload
-    def remove_empty_elements_from_ordered_dict(
-        d: OrderedDict[str, Any],
-    ) -> OrderedDict[str, Any]: ...
-
-    @staticmethod
-    def remove_empty_elements_from_ordered_dict(
-        d: List[OrderedDict[str, Any]] | OrderedDict[str, Any],
-    ) -> List[OrderedDict[str, Any]] | OrderedDict[str, Any]:
+        d: List[Dict[str, Any]] | Dict[str, Any],
+    ) -> List[Dict[str, Any]] | Dict[str, Any]:
         """
         Recursively remove empty lists, empty dicts, or None elements from a dictionary
         or a list of dictionaries
@@ -80,7 +68,6 @@ class FhirClientJsonHelpers:
         """
 
         def empty(x: Any) -> bool:
-            # Check if the input is None, an empty list, an empty dict, or an empty string
             return (
                 x is None
                 or x == []
@@ -88,7 +75,7 @@ class FhirClientJsonHelpers:
                 or (isinstance(x, str) and x.strip() == "")
             )
 
-        if not isinstance(d, (OrderedDict, list, Dict)):
+        if not isinstance(d, (dict, list)):
             return d
         elif isinstance(d, list):
             return [
@@ -100,21 +87,14 @@ class FhirClientJsonHelpers:
                 if not empty(v)
             ]
         else:
-            return OrderedDict[str, Any](
-                {
-                    k: v
-                    for k, v in (
-                        (
-                            k,
-                            FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
-                                v
-                            ),
-                        )
-                        for k, v in d.items()
-                    )
-                    if not empty(v)
-                }
-            )
+            return {
+                k: v
+                for k, v in (
+                    (k, FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(v))
+                    for k, v in d.items()
+                )
+                if not empty(v)
+            }
 
     @staticmethod
     def convert_dict_to_fhir_json(dict_: Dict[str, Any]) -> str:

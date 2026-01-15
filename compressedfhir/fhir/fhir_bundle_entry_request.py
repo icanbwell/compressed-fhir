@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Optional, OrderedDict
+from typing import Any, Dict, Optional
 
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
@@ -27,8 +27,8 @@ class FhirBundleEntryRequest:
         self.ifNoneMatch: Optional[str] = ifNoneMatch
         self.ifNoneExist: Optional[str] = ifNoneExist
 
-    def dict(self) -> OrderedDict[str, Any]:
-        result: OrderedDict[str, Any] = OrderedDict[str, Any](
+    def dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = (
             {"url": self.url, "method": self.method}
         )
         if self.ifModifiedSince is not None:
@@ -41,7 +41,7 @@ class FhirBundleEntryRequest:
 
     @classmethod
     def from_dict(
-        cls, d: Dict[str, Any] | OrderedDict[str, Any]
+        cls, d: Dict[str, Any]
     ) -> "FhirBundleEntryRequest":
         date_if_modified_since: Optional[datetime] = None
         if "ifModifiedSince" in d:
