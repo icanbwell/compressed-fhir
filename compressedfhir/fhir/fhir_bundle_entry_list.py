@@ -60,16 +60,7 @@ class FhirBundleEntryList(Deque[FhirBundleEntry]):
         if not isinstance(x, FhirBundleEntry):
             raise TypeError("Only FhirBundleEntry instances can be appended.")
 
-        # check that we don't have a duplicate entry
-        key: Optional[str] = x.resource_type_and_id
-        if key is None:
-            super().append(x)
-        else:
-            for entry in self:
-                if entry.resource_type_and_id == key:
-                    # we have a duplicate entry
-                    return
-            super().append(x)
+        super().append(x)
 
     @override
     def extend(self, iterable: Iterable[FhirBundleEntry], /) -> None:
