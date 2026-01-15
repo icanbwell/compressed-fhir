@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, OrderedDict
+from typing import Any, Dict
 
 from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
@@ -22,14 +22,14 @@ class FhirLink:
         self.url: str = url
         self.relation: str = relation
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> Dict[str, Any]:
         """
         Converts the FhirLink instance to a dictionary.
 
         :return: A dictionary representation of the link.
         """
-        result = OrderedDict[str, Any]({"url": self.url, "relation": self.relation})
-        return FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(result)
+        result: Dict[str, Any] = {"url": self.url, "relation": self.relation}
+        return FhirClientJsonHelpers.remove_empty_elements(result)
 
     def json(self) -> str:
         """
@@ -43,7 +43,7 @@ class FhirLink:
         return f"FhirLink(url={self.url}, relation={self.relation})"
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any] | OrderedDict[str, Any]) -> "FhirLink":
+    def from_dict(cls, data: Dict[str, Any]) -> "FhirLink":
         """
         Populates the FhirLink instance from a dictionary.
 

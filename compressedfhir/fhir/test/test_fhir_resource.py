@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 from typing import Dict, Any
 
 from compressedfhir.fhir.fhir_resource import FhirResource
@@ -102,3 +103,49 @@ class TestFhirResource:
         assert parsed_json == initial_data
         assert "resourceType" in parsed_json
         assert "id" in parsed_json
+
+    def test_accepts_ordered_dict_input(self) -> None:
+        """Test that FhirResource still accepts OrderedDict as input for backward compatibility."""
+        ordered_data: OrderedDict[str, Any] = OrderedDict()
+        ordered_data["resourceType"] = "Patient"
+        ordered_data["id"] = "123"
+        ordered_data["name"] = [{"given": ["John"]}]
+
+        resource = FhirResource(
+            initial_dict=ordered_data, storage_mode=CompressedDictStorageMode()
+        )
+
+        with resource.transaction():
+            assert resource.resource_type == "Patient"
+            assert resource.id == "123"
+
+    def test_dict_returns_regular_dict(self) -> None:
+        """Test that dict() returns a regular dict (not OrderedDict) but preserves order."""
+        initial_data: Dict[str, Any] = {
+            "resourceType": "Patient",
+            "id": "123",
+        }
+        resource = FhirResource(
+            initial_dict=initial_data, storage_mode=CompressedDictStorageMode()
+        )
+
+        result = resource.dict()
+
+        # Should be a dict, not OrderedDict
+        assert type(result) is dict
+        # Order should be preserved
+        assert list(result.keys()) == ["resourceType", "id"]
+
+    def test_from_dict_accepts_ordered_dict(self) -> None:
+        """Test that from_dict accepts OrderedDict for backward compatibility."""
+        ordered_data: OrderedDict[str, Any] = OrderedDict()
+        ordered_data["resourceType"] = "Observation"
+        ordered_data["id"] = "456"
+
+        resource = FhirResource.from_dict(
+            ordered_data, storage_mode=CompressedDictStorageMode()
+        )
+
+        assert resource.resource_type == "Observation"
+        assert resource.id == "456"
+

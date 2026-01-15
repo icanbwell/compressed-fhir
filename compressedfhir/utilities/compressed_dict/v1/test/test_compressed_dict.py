@@ -26,7 +26,7 @@ class TestCompressedDict:
         assert cd._storage_mode.storage_type == "raw"
 
     def test_init_with_dict(self) -> None:
-        """Test initialization with initial dictionary"""
+        """Test initialization with an initial dictionary"""
         initial_data = {"a": 1, "b": 2, "c": 3}
         cd = CompressedDict(
             initial_dict=initial_data,
@@ -465,3 +465,65 @@ def test_nested_dict_with_datetime() -> None:
 
     assert plain_dict["period"]["start"] == nested_dict["period"]["start"]  # type: ignore[index]
     assert plain_dict == nested_dict
+
+
+def test_accepts_ordered_dict_input() -> None:
+    """Test that CompressedDict accepts OrderedDict as input for backward compatibility."""
+    from collections import OrderedDict
+
+    ordered_data: OrderedDict[str, Any] = OrderedDict()
+    ordered_data["z"] = 1
+    ordered_data["a"] = 2
+    ordered_data["m"] = 3
+
+    cd = CompressedDict(
+        initial_dict=ordered_data,
+        storage_mode=CompressedDictStorageMode(storage_type="raw"),
+        properties_to_cache=[],
+    )
+
+    with cd.transaction():
+        assert cd["z"] == 1
+        assert cd["a"] == 2
+        assert cd["m"] == 3
+        # Order should be preserved
+        assert list(cd.keys()) == ["z", "a", "m"]
+
+
+def test_dict_returns_regular_dict() -> None:
+    """Test that dict() returns a regular dict (not OrderedDict) but preserves order."""
+    from collections import OrderedDict
+
+    initial_data = {"z": 1, "a": 2, "m": 3}
+    cd = CompressedDict(
+        initial_dict=initial_data,
+        storage_mode=CompressedDictStorageMode(storage_type="raw"),
+        properties_to_cache=[],
+    )
+
+    result = cd.dict()
+
+    # Should be a dict, not OrderedDict
+    assert type(result) is dict
+    assert not isinstance(result, OrderedDict)
+    # Order should be preserved
+    assert list(result.keys()) == ["z", "a", "m"]
+
+
+def test_raw_dict_returns_regular_dict() -> None:
+    """Test that raw_dict() returns a regular dict."""
+    from collections import OrderedDict
+
+    initial_data = {"x": 1, "y": 2}
+    cd = CompressedDict(
+        initial_dict=initial_data,
+        storage_mode=CompressedDictStorageMode(storage_type="compressed"),
+        properties_to_cache=[],
+    )
+
+    result = cd.raw_dict()
+
+    # Should be a dict, not OrderedDict
+    assert type(result) is dict
+    assert not isinstance(result, OrderedDict)
+    assert result == {"x": 1, "y": 2}
