@@ -44,9 +44,7 @@ class FhirIdentifier:
         return FhirClientJsonHelpers.remove_empty_elements(result)
 
     @classmethod
-    def from_dict(
-        cls, data: Dict[str, Any]
-    ) -> "FhirIdentifier":
+    def from_dict(cls, data: Dict[str, Any]) -> "FhirIdentifier":
         """
         Create a FhirIdentifier object from a dictionary.
 

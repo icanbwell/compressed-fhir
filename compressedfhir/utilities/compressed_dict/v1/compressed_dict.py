@@ -462,9 +462,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             + ")"
         )
 
-    def replace(
-        self, *, value: Dict[K, V]
-    ) -> "CompressedDict[K, V]":
+    def replace(self, *, value: Dict[K, V]) -> "CompressedDict[K, V]":
         """
         Replace the current dictionary with a new one
 

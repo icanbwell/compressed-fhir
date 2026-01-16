@@ -36,9 +36,7 @@ class FhirBundleEntrySearch:
         return FhirClientJsonHelpers.remove_empty_elements(result)
 
     @classmethod
-    def from_dict(
-        cls, data: Dict[str, Any]
-    ) -> "FhirBundleEntrySearch":
+    def from_dict(cls, data: Dict[str, Any]) -> "FhirBundleEntrySearch":
         """
         Creates a FhirBundleEntrySearch object from a dictionary.
 

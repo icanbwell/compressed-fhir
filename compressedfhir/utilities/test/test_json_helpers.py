@@ -34,7 +34,6 @@ class TestFhirClientJsonHelpers:
         expected_list: List[Dict[str, Any]] = [{"a": 1}, {"d": "test"}]
         assert FhirClientJsonHelpers.remove_empty_elements(input_list) == expected_list
 
-
     def test_convert_dict_to_fhir_json(self) -> None:
         input_dict = {"name": "John Doe", "age": 30, "address": None, "hobbies": []}
         result = FhirClientJsonHelpers.convert_dict_to_fhir_json(input_dict)

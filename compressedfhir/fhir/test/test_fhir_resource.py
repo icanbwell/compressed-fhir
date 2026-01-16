@@ -148,4 +148,3 @@ class TestFhirResource:
 
         assert resource.resource_type == "Observation"
         assert resource.id == "456"
-

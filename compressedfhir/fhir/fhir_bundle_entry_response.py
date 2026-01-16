@@ -38,9 +38,7 @@ class FhirBundleEntryResponse:
         return FhirClientJsonHelpers.remove_empty_elements(result)
 
     @classmethod
-    def from_dict(
-        cls, d: Dict[str, Any]
-    ) -> "FhirBundleEntryResponse":
+    def from_dict(cls, d: Dict[str, Any]) -> "FhirBundleEntryResponse":
         date_last_modified: Optional[datetime] = None
         if "lastModified" in d:
             if isinstance(d["lastModified"], datetime):

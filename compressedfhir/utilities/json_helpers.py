@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, cast, Union, Optional
+from typing import Any, Dict, List, Union, Optional, overload
 from datetime import datetime, date
 
 import orjson
@@ -17,6 +17,18 @@ class FhirClientJsonHelpers:
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
         return str(obj)
+
+    @overload
+    @staticmethod
+    def remove_empty_elements(
+        d: Dict[str, Any],
+    ) -> Dict[str, Any]: ...
+
+    @overload
+    @staticmethod
+    def remove_empty_elements(
+        d: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]: ...
 
     @staticmethod
     def remove_empty_elements(
@@ -42,7 +54,7 @@ class FhirClientJsonHelpers:
             return d
         elif isinstance(d, list):
             return [
-                cast(Dict[str, Any], v)
+                v
                 for v in (FhirClientJsonHelpers.remove_empty_elements(v) for v in d)
                 if not empty(v)
             ]
@@ -64,8 +76,8 @@ class FhirClientJsonHelpers:
 
         :return:
         """
-        instance_variables: Dict[str, Any] = cast(
-            Dict[str, Any], FhirClientJsonHelpers.remove_empty_elements(dict_)
+        instance_variables: Dict[str, Any] = (
+            FhirClientJsonHelpers.remove_empty_elements(dict_)
         )
 
         instance_variables_text: str = json.dumps(
