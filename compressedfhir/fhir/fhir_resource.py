@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Any, Optional, Dict, List, cast, OrderedDict, override
+from typing import Any, Optional, Dict, List, cast, override
 
 from compressedfhir.fhir.fhir_meta import FhirMeta
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict import (
@@ -22,7 +22,7 @@ class FhirResource(CompressedDict[str, Any]):
 
     def __init__(
         self,
-        initial_dict: Dict[str, Any] | OrderedDict[str, Any] | None = None,
+        initial_dict: Dict[str, Any] | None = None,
         *,
         meta: Optional[FhirMeta] = None,
         storage_mode: CompressedDictStorageMode | None = None,
@@ -154,11 +154,9 @@ class FhirResource(CompressedDict[str, Any]):
         """Convert the resource to a JSON string."""
 
         # working_dict preserves the python types so create a fhir friendly version
-        raw_dict: OrderedDict[str, Any] = self.raw_dict()
+        raw_dict: Dict[str, Any] = self.raw_dict()
 
-        raw_dict = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
-            raw_dict
-        )
+        raw_dict = FhirClientJsonHelpers.remove_empty_elements(raw_dict)
         return json.dumps(obj=raw_dict, cls=FhirJSONEncoder)
 
     def to_fhir_dict(self) -> Dict[str, Any]:

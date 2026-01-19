@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Any, Dict, Optional, List, OrderedDict
+from typing import Any, Dict, Optional, List
 
 from compressedfhir.fhir.fhir_bundle_entry_search import FhirBundleEntrySearch
 from compressedfhir.fhir.fhir_link import FhirLink
@@ -39,7 +39,7 @@ class FhirBundleEntry:
         self,
         *,
         fullUrl: Optional[str] = None,
-        resource: Dict[str, Any] | FhirResource | OrderedDict[str, Any] | None,
+        resource: Dict[str, Any] | FhirResource | None,
         request: Optional[FhirBundleEntryRequest] = None,
         response: Optional[FhirBundleEntryResponse] = None,
         link: Optional[List[FhirLink]] = None,
@@ -79,7 +79,7 @@ class FhirBundleEntry:
         cls,
         *,
         fullUrl: Optional[str] = None,
-        resource: Dict[str, Any] | FhirResource | OrderedDict[str, Any] | None,
+        resource: Dict[str, Any] | FhirResource | None,
         request: Optional[FhirBundleEntryRequest] = None,
         response: Optional[FhirBundleEntryResponse] = None,
         link: Optional[List[FhirLink]] = None,
@@ -138,8 +138,8 @@ class FhirBundleEntry:
         else:
             self._resource = None
 
-    def dict(self) -> OrderedDict[str, Any]:
-        result: OrderedDict[str, Any] = OrderedDict[str, Any]()
+    def dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
         if self.fullUrl is not None:
             result["fullUrl"] = self.fullUrl
         if self.resource is not None:
@@ -152,12 +152,12 @@ class FhirBundleEntry:
             result["link"] = [link.dict() for link in self.link]
         if self.search is not None:
             result["search"] = self.search.dict()
-        return FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(result)
+        return FhirClientJsonHelpers.remove_empty_elements(result)
 
     @classmethod
     def from_dict(
         cls,
-        d: OrderedDict[str, Any] | Dict[str, Any],
+        d: Dict[str, Any],
         storage_mode: CompressedDictStorageMode | None = None,
     ) -> "FhirBundleEntry":
         if storage_mode is None:

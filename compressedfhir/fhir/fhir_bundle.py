@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Any, Dict, List, Optional, cast, OrderedDict
+from typing import Any, Dict, List, Optional, cast
 
 from compressedfhir.fhir.fhir_bundle_entry import FhirBundleEntry
 from compressedfhir.fhir.fhir_bundle_entry_list import FhirBundleEntryList
@@ -13,9 +13,6 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode im
 )
 from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
-from compressedfhir.utilities.ordered_dict_to_dict_converter.ordered_dict_to_dict_converter import (
-    OrderedDictToDictConverter,
-)
 
 
 class FhirBundle:
@@ -68,13 +65,11 @@ class FhirBundle:
         self.link: Optional[List[FhirLink]] = link
         self.meta: Optional[FhirMeta] = meta
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> Dict[str, Any]:
         entries: List[Dict[str, Any]] | None = (
             [entry.dict() for entry in self.entry] if self.entry else None
         )
-        result: OrderedDict[str, Any] = OrderedDict[str, Any](
-            {"type": self.type_, "resourceType": "Bundle"}
-        )
+        result: Dict[str, Any] = {"type": self.type_, "resourceType": "Bundle"}
 
         if self.id_ is not None:
             result["id"] = self.id_
@@ -90,7 +85,7 @@ class FhirBundle:
             result["link"] = [link.dict() for link in self.link]
         if self.meta:
             result["meta"] = self.meta.dict()
-        return FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(result)
+        return FhirClientJsonHelpers.remove_empty_elements(result)
 
     @classmethod
     def construct(
@@ -131,7 +126,7 @@ class FhirBundle:
     @classmethod
     def from_dict(
         cls,
-        data: OrderedDict[str, Any] | Dict[str, Any],
+        data: Dict[str, Any],
         storage_mode: CompressedDictStorageMode | None = None,
     ) -> "FhirBundle":
         """
@@ -292,4 +287,4 @@ class FhirBundle:
 
         :return: Plain dictionary representation of the Bundle
         """
-        return OrderedDictToDictConverter.convert(self.dict())
+        return self.dict()
