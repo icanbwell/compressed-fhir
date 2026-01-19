@@ -1,5 +1,15 @@
 import copy
-from typing import Deque, Optional, AsyncGenerator, List, Any, Dict, override, Iterable
+from typing import (
+    Deque,
+    Optional,
+    AsyncGenerator,
+    List,
+    Any,
+    Dict,
+    Set,
+    override,
+    Iterable,
+)
 
 from compressedfhir.fhir.fhir_bundle_entry import FhirBundleEntry
 
@@ -9,13 +19,13 @@ class FhirBundleEntryList(Deque[FhirBundleEntry]):
     Represents a list of FHIR Bundle entries.
     """
 
-    __slots__: List[str] = ['_keys']
+    __slots__: List[str] = ["_keys"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._keys = set()
+        self._keys: Set[str] = set()
         for entry in self:
-            key = getattr(entry, 'resource_type_and_id', None)
+            key = getattr(entry, "resource_type_and_id", None)
             if key is not None:
                 self._keys.add(key)
 
@@ -70,9 +80,10 @@ class FhirBundleEntryList(Deque[FhirBundleEntry]):
 
         # check that we don't have a duplicate entry
         key: Optional[str] = x.resource_type_and_id
-        if key in self._keys:
+        if key is not None and key in self._keys:
             return
-        self._keys.add(key)
+        if key is not None:
+            self._keys.add(key)
         super().append(x)
 
     @override

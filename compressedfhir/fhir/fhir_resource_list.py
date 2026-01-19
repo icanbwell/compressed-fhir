@@ -19,13 +19,13 @@ class FhirResourceList(BaseResourceList[FhirResource]):
     Represents a list of FHIR resources.
     """
 
-    __slots__: List[str] = BaseResourceList.__slots__ + ['_keys']
+    __slots__: List[str] = BaseResourceList.__slots__ + ["_keys"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._keys = set()
+        self._keys: Set[str] = set()
         for entry in self:
-            key = getattr(entry, 'resource_type_and_id', None)
+            key = getattr(entry, "resource_type_and_id", None)
             if key is not None:
                 self._keys.add(key)
 
