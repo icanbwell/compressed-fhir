@@ -9,7 +9,15 @@ class FhirBundleEntryList(Deque[FhirBundleEntry]):
     Represents a list of FHIR Bundle entries.
     """
 
-    __slots__: List[str] = []
+    __slots__: List[str] = ['_keys']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._keys = set()
+        for entry in self:
+            key = getattr(entry, 'resource_type_and_id', None)
+            if key is not None:
+                self._keys.add(key)
 
     async def consume_resource_async(
         self,
@@ -62,14 +70,10 @@ class FhirBundleEntryList(Deque[FhirBundleEntry]):
 
         # check that we don't have a duplicate entry
         key: Optional[str] = x.resource_type_and_id
-        if key is None:
-            super().append(x)
-        else:
-            for entry in self:
-                if entry.resource_type_and_id == key:
-                    # we have a duplicate entry
-                    return
-            super().append(x)
+        if key in self._keys:
+            return
+        self._keys.add(key)
+        super().append(x)
 
     @override
     def extend(self, iterable: Iterable[FhirBundleEntry], /) -> None:
