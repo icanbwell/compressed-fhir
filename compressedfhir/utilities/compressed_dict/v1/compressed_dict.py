@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 from collections.abc import KeysView, ValuesView, ItemsView, MutableMapping
 from contextlib import contextmanager
 from typing import Dict, Optional, Iterator, cast, List, Any, overload, OrderedDict
@@ -59,6 +60,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
                 - 'compressed_msgpack': Store as compressed MessagePack bytes
         """
         # Storage configuration
+        logging.info('Compressed fhir is called')
         self._storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.raw() # Hardcoded for testing
 
         # Working copy of the dictionary during context
