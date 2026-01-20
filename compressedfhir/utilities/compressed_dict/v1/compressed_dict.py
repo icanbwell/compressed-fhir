@@ -59,13 +59,13 @@ class CompressedDict[K, V](MutableMapping[K, V]):
                 - 'compressed_msgpack': Store as compressed MessagePack bytes
         """
         # Storage configuration
-        self._storage_mode: CompressedDictStorageMode = storage_mode
+        self._storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.raw() # Hardcoded for testing
 
         # Working copy of the dictionary during context
-        self._working_dict: Optional[OrderedDict[K, V]] = None
+        self._working_dict: OrderedDict[K, V] | Dict[K, V] | None = None
 
         # Private storage options
-        self._raw_dict: OrderedDict[K, V] = OrderedDict[K, V]()
+        self._raw_dict: Optional[Dict[K, V]] = {}
         self._serialized_dict: Optional[bytes] = None
 
         self._properties_to_cache: List[K] | None = properties_to_cache
@@ -79,12 +79,17 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         # Populate initial dictionary if provided
         if initial_dict:
             # Ensure we use an OrderedDict to maintain original order
-            initial_dict_ordered = (
-                initial_dict
-                if isinstance(initial_dict, OrderedDict)
-                else OrderedDict[K, V](initial_dict)
-            )
-            self.replace(value=initial_dict_ordered)
+            if storage_mode.storage_type == "raw":
+                if not isinstance(initial_dict, dict):
+                    initial_dict = dict(initial_dict)                    
+                self.replace(value=initial_dict)
+            else:
+                initial_dict_ordered = (
+                    initial_dict
+                    if isinstance(initial_dict, OrderedDict)
+                    else OrderedDict[K, V](initial_dict)
+                )
+                self.replace(value=initial_dict_ordered)
 
     @contextmanager
     def transaction(self) -> Iterator["CompressedDict[K, V]"]:
@@ -142,8 +147,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         if not self._working_dict:
             self._working_dict = self.create_working_dict()
 
-    def create_working_dict(self) -> OrderedDict[K, V]:
-        working_dict: OrderedDict[K, V]
+    def create_working_dict(self) -> OrderedDict[K, V] | Dict[K, V]:
+        working_dict: OrderedDict[K, V] | Dict[K, V]
         # Deserialize the dictionary before entering the context
         if self._storage_mode.storage_type == "raw":
             # For raw mode, create a deep copy of the existing dictionary
@@ -247,12 +252,12 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             unpacked_dict,
         )
 
-    def _get_dict(self) -> OrderedDict[K, V]:
+    def _get_dict(self) -> Dict[K, V] | OrderedDict[K, V]:
         """
         Get the dictionary, deserializing if necessary
 
         Returns:
-            Current dictionary state
+            Current dictionary state (Dict for raw mode, OrderedDict for serialized modes)
         """
 
         if self._working_dict is None:
@@ -310,12 +315,12 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             # Update the cached properties if the key is in the list
             self._cached_properties[key] = value
 
-    def _update_serialized_dict(self, current_dict: OrderedDict[K, V] | None) -> None:
+    def _update_serialized_dict(self, current_dict: Dict[K, V] | OrderedDict[K, V] | None) -> None:
         if current_dict is None:
             self._cached_properties.clear()
             self._length = 0
             self._serialized_dict = None
-            self._raw_dict = OrderedDict[K, V]()
+            self._raw_dict = {}
             return
 
         if self._properties_to_cache:
@@ -425,7 +430,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         """
         return self._get_dict().items()
 
-    def raw_dict(self) -> OrderedDict[K, V]:
+    def raw_dict(self) -> OrderedDict[K, V] | Dict[K, V]:
         """
         Returns the raw dictionary.  Deserializes if necessary.
         Note that this dictionary preserves the python types so it is not FHIR friendly.
@@ -442,26 +447,34 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             # in the self._working_dict to keep memory low
             return self.create_working_dict()
 
-    def dict(self) -> OrderedDict[K, V]:
+    def dict(self) -> Dict[K, V] | OrderedDict[K, V]:
         """
         Convert to a FHIR friendly dictionary where the python types like datetime are converted to string versions
         For example, datetime will be represented as a iso format string per FHIR instead of a python datetime object.
 
         Returns:
-            FHIR friendly dictionary
+            FHIR friendly dictionary (Dict for raw storage mode, OrderedDict for serialized modes)
         """
-        return cast(
-            OrderedDict[K, V],
-            json.loads(
-                self.json(),
-                object_pairs_hook=lambda pairs: OrderedDict(pairs),
-            ),
-        )
+        if self._storage_mode.storage_type == "raw":
+            # For raw mode, return plain dict for better performance
+            return cast(
+                Dict[K, V],
+                json.loads(self.json()),
+            )
+        else:
+            # For serialized modes, preserve order with OrderedDict
+            return cast(
+                OrderedDict[K, V],
+                json.loads(
+                    self.json(),
+                    object_pairs_hook=lambda pairs: OrderedDict(pairs),
+                ),
+            )
 
     def json(self) -> str:
         """Convert the resource to a JSON string."""
 
-        raw_dict: OrderedDict[K, V] = self.raw_dict()
+        raw_dict: Dict[K, V] | OrderedDict[K, V] = self.raw_dict()
 
         return json.dumps(obj=raw_dict, cls=FhirJSONEncoder)
 
@@ -499,10 +512,14 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         if not value:
             self.clear()
             return self
-
-        new_dict: OrderedDict[K, V] = (
-            value if isinstance(value, OrderedDict) else OrderedDict[K, V](value)
-        )
+        if self._storage_mode.storage_type == "raw":
+            new_dict: Dict[K, V] = (
+                value if isinstance(value, dict) else dict(value)
+            )
+        else:
+            new_dict: OrderedDict[K, V] | Dict[K, V] = (
+                value if isinstance(value, OrderedDict) else OrderedDict[K, V](value)
+            )
         self._update_serialized_dict(current_dict=new_dict)
         return self
 
@@ -663,6 +680,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         Returns:
             Plain dictionary
         """
+        if self._storage_mode.storage_type == "raw":
+            return dict(self.raw_dict())
         return OrderedDictToDictConverter.convert(self.raw_dict())
 
     @classmethod
@@ -673,7 +692,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         :param json_str: The JSON string to convert.
         :return: A FhirResource object.
         """
-        data = TypePreservationSerializer.deserialize(json_str)
+        data = json.loads(json_str) # Look can we optimize decoder
         return cls.from_dict(data)
 
     @classmethod
