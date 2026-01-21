@@ -22,7 +22,7 @@ class FhirLink:
         self.url: str = url
         self.relation: str = relation
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         """
         Converts the FhirLink instance to a dictionary.
 

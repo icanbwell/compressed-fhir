@@ -68,7 +68,7 @@ class FhirBundle:
         self.link: Optional[List[FhirLink]] = link
         self.meta: Optional[FhirMeta] = meta
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         entries: List[Dict[str, Any]] | None = (
             [entry.dict() for entry in self.entry] if self.entry else None
         )

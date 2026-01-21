@@ -28,7 +28,7 @@ class FhirIdentifier:
         self.system: Optional[str] = system
         self.value: Optional[str] = value
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         """
         Convert the FhirIdentifier object to a dictionary.
 

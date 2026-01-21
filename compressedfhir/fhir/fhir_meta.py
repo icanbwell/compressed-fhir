@@ -17,7 +17,7 @@ class FhirMeta:
     security: list[Dict[str, Any]] | None = None
     tag: list[str] | None = None
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> OrderedDict[str, Any] | Dict[str, Any]:
         result: OrderedDict[str, Any] = OrderedDict[str, Any]()
         if self.version_id is not None:
             result["versionId"] = self.version_id

@@ -3,9 +3,9 @@ from typing import OrderedDict, cast
 
 class OrderedDictToDictConverter:
     @staticmethod
-    def convert[K, V](ordered_dict: OrderedDict[K, V]) -> dict[K, V]:
+    def convert[K, V](ordered_dict: OrderedDict[K, V] | dict[K, V]) -> dict[K, V]:
         """
-        Converts an OrderedDict to a regular dict in a recursive manner.
+        Converts an OrderedDict or dict to a regular dict in a recursive manner.
 
 
         :param ordered_dict: The OrderedDict to convert

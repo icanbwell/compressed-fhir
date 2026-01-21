@@ -154,7 +154,7 @@ class FhirResource(CompressedDict[str, Any]):
         """Convert the resource to a JSON string."""
 
         # working_dict preserves the python types so create a fhir friendly version
-        raw_dict: OrderedDict[str, Any] = self.raw_dict()
+        raw_dict: OrderedDict[str, Any] | Dict[str, Any] = self.raw_dict()
 
         raw_dict = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
             raw_dict
