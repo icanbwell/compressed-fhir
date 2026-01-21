@@ -694,7 +694,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         :param json_str: The JSON string to convert.
         :return: A FhirResource object.
         """
-        data = json.loads(json_str)
+        data = TypePreservationSerializer.deserialize(json_str)
         return cls.from_dict(data)
 
     @classmethod
