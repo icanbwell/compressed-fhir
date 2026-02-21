@@ -59,19 +59,25 @@ class FhirClientJsonHelpers:
     @staticmethod
     @overload
     def remove_empty_elements_from_ordered_dict(
-        d: List[OrderedDict[str, Any]],
-    ) -> List[OrderedDict[str, Any]]: ...
+        d: List[OrderedDict[str, Any] | Dict[str, Any]],
+    ) -> List[OrderedDict[str, Any] | Dict[str, Any]]: ...
 
     @staticmethod
     @overload
     def remove_empty_elements_from_ordered_dict(
-        d: OrderedDict[str, Any],
-    ) -> OrderedDict[str, Any]: ...
+        d: OrderedDict[str, Any] | Dict[str, Any],
+    ) -> OrderedDict[str, Any] | Dict[str, Any]: ...
 
     @staticmethod
     def remove_empty_elements_from_ordered_dict(
-        d: List[OrderedDict[str, Any]] | OrderedDict[str, Any],
-    ) -> List[OrderedDict[str, Any]] | OrderedDict[str, Any]:
+        d: List[OrderedDict[str, Any] | Dict[str, Any]]
+        | OrderedDict[str, Any]
+        | Dict[str, Any],
+    ) -> (
+        List[OrderedDict[str, Any] | Dict[str, Any]]
+        | OrderedDict[str, Any]
+        | Dict[str, Any]
+    ):
         """
         Recursively remove empty lists, empty dicts, or None elements from a dictionary
         or a list of dictionaries
