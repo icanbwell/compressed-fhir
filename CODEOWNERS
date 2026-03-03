@@ -1,1 +1,4 @@
 * @icanbwell/iop-codeowners
+# AI Agent Instructions - EA Ownership
+AGENTS.md @icanbwell/enterprise-architecture
+CLAUDE.md @icanbwell/enterprise-architecture
