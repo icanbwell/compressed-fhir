@@ -1,5 +1,4 @@
 import copy
-import json
 from contextlib import contextmanager
 from typing import (
     Deque,
@@ -17,7 +16,6 @@ from typing import (
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict import (
     CompressedDict,
 )
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 
 
 class BaseResourceList[T: CompressedDict[str, Any]](Deque[T]):
@@ -47,7 +45,9 @@ class BaseResourceList[T: CompressedDict[str, Any]](Deque[T]):
 
         :return: JSON string representation of the list.
         """
-        return json.dumps([r.dict() for r in self], cls=FhirJSONEncoder)
+        # Same output as json.dumps([r.dict() for r in self]) without parsing each
+        # resource's JSON back into a dict and serializing it again.
+        return "[" + ", ".join(r.json() for r in self) + "]"
 
     def get_resources(self) -> "BaseResourceList[T]":
         """

@@ -1,3 +1,4 @@
+import collections
 import copy
 import json
 from collections.abc import KeysView, ValuesView, ItemsView, MutableMapping
@@ -454,7 +455,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             OrderedDict[K, V],
             json.loads(
                 self.json(),
-                object_pairs_hook=lambda pairs: OrderedDict(pairs),
+                # collections.OrderedDict directly: the typing alias goes through typing's
+                # slow __call__ for every JSON object in the resource
+                object_pairs_hook=collections.OrderedDict,
             ),
         )
 
