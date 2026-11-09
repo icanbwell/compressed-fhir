@@ -1,6 +1,9 @@
 import json
+from collections import OrderedDict
 from datetime import datetime, date
-from typing import List, Dict, Any
+from typing import List, Dict, Any, cast
+
+import pytest
 
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
@@ -97,3 +100,61 @@ class TestFhirClientJsonHelpers:
         invalid_json = "{invalid json}"
         result = FhirClientJsonHelpers.orjson_loads(invalid_json)
         assert result is None
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (
+            {"a": 0, "b": False, "c": 0.0},
+            OrderedDict([("a", 0), ("b", False), ("c", 0.0)]),
+        ),
+        ({"a": "  ", "b": "\n", "c": " x "}, OrderedDict([("c", " x ")])),
+        ({"a": {"b": {"c": None}}, "d": [[], {}, None, ""]}, OrderedDict()),
+        (
+            {"a": [{"b": None}, {"c": 1}]},
+            OrderedDict([("a", [OrderedDict([("c", 1)])])]),
+        ),
+        ([{"a": None}, {"b": [None, 2]}], [OrderedDict([("b", [2])])]),
+        ("text", "text"),
+        (5, 5),
+        ((), ()),
+    ],
+    ids=[
+        "falsy-scalars-kept",
+        "blank-strings-removed",
+        "nested-empties-collapse",
+        "list-of-dicts",
+        "top-level-list",
+        "string-passthrough",
+        "number-passthrough",
+        "tuple-passthrough",
+    ],
+)
+def test_remove_empty_elements_from_ordered_dict_cases(
+    value: Any, expected: Any
+) -> None:
+    # Act
+    result = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(value)
+
+    # Assert
+    assert result == expected
+
+
+def test_remove_empty_elements_from_ordered_dict_keeps_order_and_returns_ordered_dicts() -> (
+    None
+):
+    # Arrange
+    value = {"z": 1, "y": {"b": 2, "a": None, "c": 3}, "x": [{"k": "v"}]}
+
+    # Act
+    result = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
+        cast(OrderedDict[str, Any], value)
+    )
+
+    # Assert
+    assert isinstance(result, OrderedDict)
+    assert list(result.keys()) == ["z", "y", "x"]
+    assert type(result["y"]) is OrderedDict
+    assert list(result["y"].keys()) == ["b", "c"]
+    assert type(result["x"][0]) is OrderedDict
