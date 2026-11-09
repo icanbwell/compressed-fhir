@@ -1,8 +1,37 @@
+import collections
 import json
 from typing import Any, Dict, List, cast, Union, Optional, OrderedDict, overload
 from datetime import datetime, date
 
 import orjson
+
+
+def _is_empty(x: Any) -> bool:
+    """True for None, an empty list, an empty dict, or a blank string."""
+    if x is None:
+        return True
+    if isinstance(x, str):
+        return x.strip() == ""
+    if isinstance(x, (list, dict)):
+        return len(x) == 0
+    return bool(x == [] or x == {})
+
+
+def _remove_empty_elements_ordered(d: Any) -> Any:
+    # Called for every value in a resource, so it checks against the builtin dict/list.
+    # isinstance against typing.Dict / typing.OrderedDict goes through typing's slow
+    # __instancecheck__ and dominated the cost of FhirResource.json().
+    if isinstance(d, dict):
+        result: OrderedDict[str, Any] = collections.OrderedDict()
+        for k, v in d.items():
+            v = _remove_empty_elements_ordered(v)
+            if not _is_empty(v):
+                result[k] = v
+        return result
+    if isinstance(d, list):
+        stripped = (_remove_empty_elements_ordered(v) for v in d)
+        return [v for v in stripped if not _is_empty(v)]
+    return d
 
 
 class FhirClientJsonHelpers:
@@ -74,47 +103,14 @@ class FhirClientJsonHelpers:
     ) -> List[OrderedDict[str, Any]] | OrderedDict[str, Any]:
         """
         Recursively remove empty lists, empty dicts, or None elements from a dictionary
-        or a list of dictionaries
+        or a list of dictionaries. Dictionaries are returned as OrderedDicts in the same key order.
         :param d: dictionary or list of dictionaries
         :return: dictionary or list of dictionaries
         """
-
-        def empty(x: Any) -> bool:
-            # Check if the input is None, an empty list, an empty dict, or an empty string
-            return (
-                x is None
-                or x == []
-                or x == {}
-                or (isinstance(x, str) and x.strip() == "")
-            )
-
-        if not isinstance(d, (OrderedDict, list, Dict)):
-            return d
-        elif isinstance(d, list):
-            return [
-                v
-                for v in (
-                    FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(v)
-                    for v in d
-                )
-                if not empty(v)
-            ]
-        else:
-            return OrderedDict[str, Any](
-                {
-                    k: v
-                    for k, v in (
-                        (
-                            k,
-                            FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
-                                v
-                            ),
-                        )
-                        for k, v in d.items()
-                    )
-                    if not empty(v)
-                }
-            )
+        return cast(
+            List[OrderedDict[str, Any]] | OrderedDict[str, Any],
+            _remove_empty_elements_ordered(d),
+        )
 
     @staticmethod
     def convert_dict_to_fhir_json(dict_: Dict[str, Any]) -> str:
