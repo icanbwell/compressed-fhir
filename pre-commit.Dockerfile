@@ -10,10 +10,15 @@ COPY Pipfile* ./
 # Install dependencies using pipenv
 RUN pipenv sync --dev --system
 
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 # Set the working directory
 WORKDIR /sourcecode
 
-# Clean up unnecessary files
-RUN git config --global --add safe.directory /sourcecode
+# Use system-level git config so it's accessible by non-root user
+RUN git config --system --add safe.directory /sourcecode
+
+USER appuser
 
 CMD ["pre-commit", "run", "--all-files"]

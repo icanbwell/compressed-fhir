@@ -44,7 +44,7 @@ class FhirBundleEntry:
         response: Optional[FhirBundleEntryResponse] = None,
         link: Optional[List[FhirLink]] = None,
         search: Optional[FhirBundleEntrySearch] = None,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
     ) -> None:
         """
         Initializes a BundleEntry object.
@@ -55,6 +55,8 @@ class FhirBundleEntry:
         :param response: The response information associated with the entry.
         :param storage_mode: The storage mode for the resource.
         """
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         self._resource: Optional[FhirResource] = (
             resource
             if isinstance(resource, CompressedDict)
@@ -82,7 +84,7 @@ class FhirBundleEntry:
         response: Optional[FhirBundleEntryResponse] = None,
         link: Optional[List[FhirLink]] = None,
         search: Optional[FhirBundleEntrySearch] = None,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
     ) -> "FhirBundleEntry":
         """
         Constructs a BundleEntry object with the given parameters.
@@ -95,6 +97,8 @@ class FhirBundleEntry:
         :param search: The search information associated with the entry.
         :param storage_mode: The storage mode for the resource.
         """
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         return cls(
             fullUrl=fullUrl,
             resource=resource,
@@ -154,8 +158,10 @@ class FhirBundleEntry:
     def from_dict(
         cls,
         d: OrderedDict[str, Any] | Dict[str, Any],
-        storage_mode: CompressedDictStorageMode,
+        storage_mode: CompressedDictStorageMode | None = None,
     ) -> "FhirBundleEntry":
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         return cls(
             fullUrl=d["fullUrl"] if "fullUrl" in d else None,
             resource=(

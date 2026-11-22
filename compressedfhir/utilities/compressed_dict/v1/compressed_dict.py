@@ -1,3 +1,4 @@
+import collections
 import copy
 import json
 from collections.abc import KeysView, ValuesView, ItemsView, MutableMapping
@@ -454,7 +455,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             OrderedDict[K, V],
             json.loads(
                 self.json(),
-                object_pairs_hook=lambda pairs: OrderedDict(pairs),
+                # collections.OrderedDict directly: the typing alias goes through typing's
+                # slow __call__ for every JSON object in the resource
+                object_pairs_hook=collections.OrderedDict,
             ),
         )
 
@@ -681,7 +684,7 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         cls,
         d: Dict[K, V],
         *,
-        storage_mode: CompressedDictStorageMode = CompressedDictStorageMode.default(),
+        storage_mode: CompressedDictStorageMode | None = None,
         properties_to_cache: List[K] | None = None,
     ) -> "CompressedDict[K, V]":
         """
@@ -692,6 +695,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         :param properties_to_cache: Optional list of properties to cache
         :return: A FhirResource object.
         """
+        if storage_mode is None:
+            storage_mode = CompressedDictStorageMode.default()
         return cls(
             initial_dict=d,
             storage_mode=storage_mode,

@@ -13,7 +13,7 @@ verify_ssl = true
 # msgpack is needed for serializing and deserializing data
 msgpack = ">=1.0.0"
 # orjson is needed for fast JSON serialization and deserialization
-orjson  = ">=3.10.16"
+orjson = ">=3.11.6"
 
 [dev-packages]
 setuptools=">=60.9.3"
