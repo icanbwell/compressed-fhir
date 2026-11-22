@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=60.9.3", "wheel>=0.43.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compressedfhir"
+dynamic = ["version"]
+description = "Stores FHIR JSON resources in compressed form in memory"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Imran Qureshi", email = "imran.qureshi@icanbwell.com" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # msgpack is needed for serializing and deserializing data
+    "msgpack>=1.0.0",
+    # orjson is needed for fast JSON serialization and deserialization
+    "orjson>=3.11.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/icanbwell/compressed-fhir"
+
+[dependency-groups]
+dev = [
+    "setuptools>=60.9.3",
+    "wheel>=0.43.0",
+    "twine>=4.0.2",
+    "pre-commit>=3.6.1",
+    "autoflake>=2.2.0",
+    "mypy>=1.8.0",
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.23.6",
+    "black>=24.2.0",
+    # msgpack-types provides type hints for msgpack
+    "msgpack-types>=0.5.0",
+    # types-orjson is needed for type hints for orjson
+    "types-orjson>=3.6.2",
+    # bandit is needed for security checks
+    "bandit>=1.8.3",
+    # ruff is needed for linting
+    "ruff>=0.11.5",
+    # pytest-cov is needed for measuring test coverage
+    "pytest-cov>=6.1.1",
+]
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[tool.setuptools.packages.find]
+include = ["compressedfhir*"]
+
+[tool.setuptools.package-data]
+compressedfhir = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "--capture=fd"
+log_cli = true
+log_cli_level = "INFO"
+# all discovered async tests are considered asyncio-driven
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
