@@ -490,11 +490,12 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         Encoding can create new empty elements (set() becomes [], b"" becomes ""), which were
         not empty when _json_source pruned the python values, so prune the encoded data again.
         """
-        if self._PRUNE_EMPTY_ON_JSON:
-            encoded = FhirClientJsonHelpers.remove_empty_elements(
-                encoded, drop_non_finite=drop_non_finite
-            )
-        return cast(Dict[K, V], encoded)
+        if not self._PRUNE_EMPTY_ON_JSON:
+            return cast(Dict[K, V], encoded)
+        pruned = FhirClientJsonHelpers.remove_empty_elements(
+            encoded, drop_non_finite=drop_non_finite
+        )
+        return cast(Dict[K, V], pruned)
 
     def _dict_exact(self) -> Dict[K, V]:
         """
