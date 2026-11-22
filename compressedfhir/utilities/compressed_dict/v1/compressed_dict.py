@@ -476,7 +476,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             self.clear()
             return self
 
-        self._update_serialized_dict(current_dict=value)
+        # shallow copy so later mutations of the caller's dict can't bypass
+        # transaction(), _length and the cached properties
+        self._update_serialized_dict(current_dict=dict(value))
         return self
 
     def clear(self) -> None:

@@ -1,4 +1,6 @@
 import logging
+
+import pytest
 from collections import OrderedDict
 from datetime import datetime, timezone, date, time
 from decimal import Decimal
@@ -195,3 +197,30 @@ def test_nested_dict() -> None:
     assert isinstance(deserialized["period"]["start"], date)
     assert isinstance(deserialized["period"]["end"], date)
     assert nested_dict == deserialized
+
+
+@pytest.mark.parametrize(
+    "use_ordered_dict, expected_type",
+    [(True, OrderedDict), (False, dict)],
+    ids=["ordered-dict", "plain-dict"],
+)
+def test_deserialize_use_ordered_dict(
+    use_ordered_dict: bool, expected_type: type
+) -> None:
+    # Arrange
+    serialized = TypePreservationSerializer.serialize(
+        {"b": 1, "a": {"d": datetime(2024, 1, 2, 3, 4, 5), "c": 2}}
+    )
+
+    # Act
+    result = TypePreservationSerializer.deserialize(
+        serialized, use_ordered_dict=use_ordered_dict
+    )
+
+    # Assert
+    nested: Any = result["a"]
+    assert list(result) == ["b", "a"]
+    assert list(nested) == ["d", "c"]
+    assert isinstance(nested["d"], datetime)
+    assert type(result) is expected_type
+    assert type(nested) is expected_type

@@ -527,3 +527,23 @@ def test_raw_dict_returns_regular_dict() -> None:
     assert type(result) is dict
     assert not isinstance(result, OrderedDict)
     assert result == {"x": 1, "y": 2}
+
+
+@pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
+def test_replace_does_not_alias_callers_dict(storage_type: Any) -> None:
+    """Mutating the dict passed in must not change the CompressedDict."""
+    # Arrange
+    source: dict[str, Any] = {"a": 1, "b": 2}
+    cd = CompressedDict(
+        initial_dict=source,
+        storage_mode=CompressedDictStorageMode(storage_type=storage_type),
+        properties_to_cache=[],
+    )
+
+    # Act
+    source["c"] = 3
+    source.pop("a")
+
+    # Assert
+    assert len(cd) == 2
+    assert cd.dict() == {"a": 1, "b": 2}
