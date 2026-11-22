@@ -83,8 +83,8 @@ Details:
   standard library.
 - Reading stored data rebuilds only the built-in types (datetime, date, time, Decimal, bytes, set,
   complex) and decoders you pass through `custom_decoders`. A custom object stored in a resource
-  (written with its class name and attributes) reads back as that plain dict, and no module is
-  imported while reading.
+  (written with its class name and attributes) reads back as its attributes dict in compressed
+  storage, and no module is imported while reading.
 - Stored data: new compressed blobs start with one space, which JSON parsers ignore, so 4.0.0 can
   still read them, and blobs written by older versions still load.
 - Upgrading from 3.x: 4.0.0 already changed `dict()` and `raw_dict()` to plain dicts instead of

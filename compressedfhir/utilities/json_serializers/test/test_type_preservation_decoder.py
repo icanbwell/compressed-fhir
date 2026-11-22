@@ -74,7 +74,8 @@ def test_complex_type_decoding(
 
 def test_custom_object_marker_is_not_rebuilt() -> None:
     """
-    Data never chooses which class gets instantiated: a custom-object marker stays a plain dict.
+    Data never chooses which class gets instantiated: a custom-object marker reads back as
+    its attributes dict.
     """
     marker = {
         "__type__": "TestCustomObject",
@@ -87,7 +88,7 @@ def test_custom_object_marker_is_not_rebuilt() -> None:
         TypePreservationDecoder.decode_tree(dict(marker), use_ordered_dict=False),
     ):
         assert not isinstance(decoded, TestCustomObject)
-        assert dict(decoded) == marker
+        assert dict(decoded) == marker["attributes"]
 
 
 def test_custom_object_is_rebuilt_only_by_an_explicit_decoder() -> None:
@@ -179,7 +180,7 @@ def test_nested_datetime_decoding() -> None:
     decoded = TypePreservationDecoder.decode(nested_datetime_dict)
 
     assert isinstance(decoded, dict)
-    attributes = decoded["attributes"]
+    attributes = decoded
     assert attributes["name"] == "test"
     assert attributes["value"] == 42
     assert isinstance(attributes["created_at"], datetime)

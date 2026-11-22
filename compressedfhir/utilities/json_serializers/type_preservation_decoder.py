@@ -76,6 +76,19 @@ class TypePreservationDecoder:
         # Merge custom decoders with default decoders
         return {**default_decoders, **(custom_decoders or {})}
 
+    @staticmethod
+    def _is_custom_object(marker: Dict[str, Any]) -> bool:
+        """
+        True for the marker the encoder writes for an arbitrary object.  Reading never imports
+        the named module or builds the class; the object reads back as its attributes dict,
+        the same data dict() produced for it before.
+        """
+        return marker.keys() == {
+            TYPE_MARKER_KEY,
+            "__module__",
+            "attributes",
+        } and isinstance(marker["attributes"], dict)
+
     @classmethod
     def decode(
         cls,
@@ -107,6 +120,8 @@ class TypePreservationDecoder:
                     # Handle built-in type decoders
                     if type_name in decoders:
                         return decoders[type_name](value)
+                    if cls._is_custom_object(value):
+                        return recursive_decode(value["attributes"])
 
                 # Recursively decode dictionary values
                 # Conditionally use OrderedDict or regular dict
@@ -158,6 +173,8 @@ class TypePreservationDecoder:
                     type_name = children[TYPE_MARKER_KEY]
                     if type_name in decoders:
                         return decoders[type_name](children)
+                    if cls._is_custom_object(children):
+                        return children["attributes"]
                     return dict_type(children)
                 decoded: Dict[str, Any] = dict_type(value)
                 for k, v in value.items():

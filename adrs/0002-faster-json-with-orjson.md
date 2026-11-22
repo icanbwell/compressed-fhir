@@ -51,8 +51,8 @@ Chosen option: **3**, released as **5.0.0** because it changes the default `json
   held in raw storage as `NaN`. Alternative: keep the standard library writer for storage and
   preserve NaN, rejected because it costs the construction speedup.
 * **Reading stored data.** The decoder rebuilds only the built-in types and decoders passed
-  explicitly through `custom_decoders`; a custom-object marker reads back as the plain dict it was
-  stored as and no module is imported. Alternative: keep rebuilding classes by name, rejected
+  explicitly through `custom_decoders`; a custom-object marker reads back as its attributes dict
+  (what `dict()` returned for it in 4.0.0) and no module is imported. Alternative: keep rebuilding classes by name, rejected
   because data should not choose what gets instantiated.
 * **`dict(ordered=True)`.** Not provided. 4.0.0 already returns plain dicts and nothing found in
   the repositories searched relies on ordered mappings.
@@ -63,7 +63,7 @@ Chosen option: **3**, released as **5.0.0** because it changes the default `json
 
 * Good: about 11 to 14x faster `dict()` and `json()` than 4.0.0; about 2x faster resource
   construction; the pruner and decoder do one pass.
-* Bad: a custom object stored in a resource reads back as a dict; default `json()` text changes (compact, raw UTF-8, `1e-7`); callers that hash, compare or
+* Bad: a custom object stored in a resource reads back as its attributes dict; default `json()` text changes (compact, raw UTF-8, `1e-7`); callers that hash, compare or
   persist the exact text must pass `byte_identical=True`; NaN is silently omitted; a plain `Enum`
   or `UUID` is accepted where it raised before.
 * One known kind of downstream coupling: code that estimates a payload size from `json.dumps` text

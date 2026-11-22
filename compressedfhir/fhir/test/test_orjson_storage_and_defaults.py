@@ -115,14 +115,13 @@ def test_writer_round_trip_matches_stdlib_writer(payload: Dict[str, Any]) -> Non
     "obj", [_Custom(), _Data()], ids=["custom-object", "dataclass"]
 )
 def test_writer_stores_custom_objects_like_the_stdlib_writer(obj: Any) -> None:
-    """Both writers store the class name and attributes; neither read rebuilds the class."""
+    """Both writers store the class name and attributes; reading gives back the attributes only."""
     for result in (
         _roundtrip_with_writer({"o": obj}),
         _roundtrip_with_stdlib({"o": obj}),
     ):
         assert not isinstance(result["o"], type(obj))
-        assert result["o"]["__type__"] == type(obj).__name__
-        assert dict(result["o"]["attributes"]) == vars(obj)
+        assert dict(result["o"]) == vars(obj)
 
 
 @pytest.mark.parametrize(
@@ -446,11 +445,16 @@ def test_reading_a_resource_never_imports_or_instantiates_named_classes(
 
     resource = FhirResource.from_dict(content, storage_mode=mode)
     from_text = FhirResource.from_json(json.dumps(content))  # always compressed
-    for r in (resource, from_text):
-        assert r.raw_dict()["extension"][0] == marker
-        assert r.dict()["extension"][0] == marker
-        assert json.loads(r.json())["extension"][0] == marker
-        assert json.loads(r.json(byte_identical=True))["extension"][0] == marker
+    # compressed storage reads a custom-object marker back as its attributes; raw storage
+    # never serializes, so the dict the caller passed in is returned untouched
+    for r, expected in (
+        (resource, marker if storage_type == "raw" else marker["attributes"]),
+        (from_text, marker["attributes"]),
+    ):
+        assert r.raw_dict()["extension"][0] == expected
+        assert r.dict()["extension"][0] == expected
+        assert json.loads(r.json())["extension"][0] == expected
+        assert json.loads(r.json(byte_identical=True))["extension"][0] == expected
 
     assert not marker_file.exists()
     assert "reader_probe_module" not in sys.modules
@@ -527,3 +531,22 @@ def test_exact_dict_works_when_a_subclass_overrides_json_without_keywords() -> N
     )
 
     assert d._dict_exact() == {"a": 1}
+
+
+class _Part:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+@pytest.mark.parametrize("storage_type", ["raw", "compressed"])
+def test_custom_object_gives_the_same_dict_and_json_in_every_storage_mode(
+    storage_type: CompressedDictStorageType,
+) -> None:
+    resource = FhirResource(
+        initial_dict={"resourceType": "Basic", "id": "1", "p": _Part("a")},
+        storage_mode=CompressedDictStorageMode(storage_type=storage_type),
+    )
+
+    assert resource.dict()["p"] == {"name": "a"}
+    assert json.loads(resource.json())["p"] == {"name": "a"}
+    assert json.loads(resource.json(byte_identical=True))["p"] == {"name": "a"}

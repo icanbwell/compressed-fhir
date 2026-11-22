@@ -70,12 +70,9 @@ def test_complex_data_serialization() -> None:
     assert deserialized["byte_data"] == complex_data["byte_data"]
     assert isinstance(deserialized["unique_items"], set)
     assert deserialized["unique_items"] == complex_data["unique_items"]
-    # a custom object is stored with its class name and attributes but is not rebuilt on read
+    # a custom object is not rebuilt on read; it comes back as its attributes
     assert not isinstance(deserialized["custom_obj"], TestCustomObject)
-    assert deserialized["custom_obj"]["__type__"] == "TestCustomObject"
-    assert dict(deserialized["custom_obj"]["attributes"]) == vars(
-        complex_data["custom_obj"]
-    )
+    assert dict(deserialized["custom_obj"]) == vars(complex_data["custom_obj"])
 
 
 def test_nested_complex_data() -> None:
