@@ -315,7 +315,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.23.6" },
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "ruff", specifier = ">=0.11.5" },
-    { name = "setuptools", specifier = ">=60.9.3" },
+    { name = "setuptools", specifier = ">=64" },
     { name = "twine", specifier = ">=4.0.2" },
     { name = "types-orjson", specifier = ">=3.6.2" },
     { name = "wheel", specifier = ">=0.43.0" },
