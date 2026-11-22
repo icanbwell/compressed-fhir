@@ -211,6 +211,10 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             decompressed_dict = TypePreservationSerializer.deserialize(
                 decoded_text, use_ordered_dict=False
             )
+            if not isinstance(decompressed_dict, dict):
+                raise TypeError(
+                    f"Expected a dict payload, got {type(decompressed_dict).__name__}"
+                )
             return cast(Dict[K, V], decompressed_dict)
 
         # Decompress if needed
@@ -226,6 +230,10 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             raw=False,  # Convert to strings
             strict_map_key=False,  # Handle potential key type variations
         )
+        if not isinstance(unpacked_dict, dict):
+            raise TypeError(
+                f"Expected a dict payload, got {type(unpacked_dict).__name__}"
+            )
         return cast(Dict[K, V], unpacked_dict)
 
     def _get_dict(self) -> Dict[K, V]:
@@ -476,8 +484,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             self.clear()
             return self
 
-        # shallow copy so later mutations of the caller's dict can't bypass
-        # transaction(), _length and the cached properties
+        # shallow copy so adding/removing top-level keys on the caller's dict can't
+        # bypass transaction(), _length and the cached properties
         self._update_serialized_dict(current_dict=dict(value))
         return self
 
@@ -633,7 +641,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         Returns:
             Plain dictionary
         """
-        return self.raw_dict()
+        # detached deep copy: raw_dict() can hand back the live internal dict
+        return copy.deepcopy(self.raw_dict())
 
     @classmethod
     def from_json(cls, json_str: str) -> "CompressedDict[K, V]":

@@ -1,3 +1,5 @@
+import zlib
+import msgpack
 from datetime import datetime
 
 import pytest
@@ -530,7 +532,9 @@ def test_raw_dict_returns_regular_dict() -> None:
 
 
 @pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
-def test_replace_does_not_alias_callers_dict(storage_type: Any) -> None:
+def test_replace_top_level_mutation_does_not_affect_compressed_dict(
+    storage_type: Any,
+) -> None:
     """Mutating the dict passed in must not change the CompressedDict."""
     # Arrange
     source: dict[str, Any] = {"a": 1, "b": 2}
@@ -547,3 +551,37 @@ def test_replace_does_not_alias_callers_dict(storage_type: Any) -> None:
     # Assert
     assert len(cd) == 2
     assert cd.dict() == {"a": 1, "b": 2}
+
+
+@pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
+def test_to_plain_dict_returns_detached_copy(storage_type: Any) -> None:
+    # Arrange
+    cd = CompressedDict(
+        initial_dict={"a": {"b": 1}},
+        storage_mode=CompressedDictStorageMode(storage_type=storage_type),
+        properties_to_cache=[],
+    )
+
+    # Act
+    plain: dict[str, Any] = cd.to_plain_dict()
+    plain["a"]["b"] = 2
+    plain["x"] = 9
+
+    # Assert
+    assert cd.dict() == {"a": {"b": 1}}
+    assert len(cd) == 1
+
+
+@pytest.mark.parametrize("storage_type", ["msgpack", "compressed"])
+def test_deserialize_dict_rejects_non_mapping_payload(storage_type: Any) -> None:
+    # Arrange
+    if storage_type == "msgpack":
+        payload = msgpack.packb([1, 2])
+    else:
+        payload = zlib.compress(b"[1, 2]")
+
+    # Act / Assert
+    with pytest.raises(TypeError):
+        CompressedDict._deserialize_dict(
+            serialized_dict_bytes=payload, storage_type=storage_type
+        )
