@@ -1,10 +1,15 @@
-import logging
 from collections import OrderedDict
 from datetime import datetime, date, time
 from decimal import Decimal
-from logging import Logger
 from typing import Any, Dict, Callable, Optional, Union, cast, List
 from zoneinfo import ZoneInfo
+
+from compressedfhir.utilities.json_serializers.type_preservation_encoder import (
+    TYPE_MARKER_KEY,
+)
+
+
+_CONTAINERS = (dict, list)
 
 
 class TypePreservationDecoder:
@@ -13,25 +18,9 @@ class TypePreservationDecoder:
     """
 
     @classmethod
-    def decode(
-        cls,
-        dct: Union[str, Dict[str, Any], List[Any]],
-        custom_decoders: Optional[Dict[str, Callable[[Any], Any]]] = None,
-        use_ordered_dict: bool = True,
-    ) -> Any:
-        """
-        Decode complex types, including nested datetime fields
-
-        Args:
-            dct: Dictionary to decode
-            custom_decoders: Optional additional custom decoders
-            use_ordered_dict: Flag to control whether to use OrderedDict or not
-
-        Returns:
-            Reconstructed object or original dictionary
-        """
-        logger: Logger = logging.getLogger(__name__)
-
+    def _build_decoders(
+        cls, custom_decoders: Optional[Dict[str, Callable[[Any], Any]]] = None
+    ) -> Dict[str, Callable[[Any], Any]]:
         # Default decoders for built-in types with nested support
         def datetime_decoder(d: Union[str, Dict[str, Any]]) -> datetime:
             if isinstance(d, str):
@@ -75,50 +64,64 @@ class TypePreservationDecoder:
             "date": date_decoder,
             "time": time_decoder,
             "decimal": lambda d: Decimal(d["value"] if isinstance(d, dict) else d),
-            "complex": lambda d: complex(d["real"], d["imag"])
-            if isinstance(d, dict)
-            else d,
-            "bytes": lambda d: d["value"].encode("latin-1")
-            if isinstance(d, dict)
-            else d,
+            "complex": lambda d: (
+                complex(d["real"], d["imag"]) if isinstance(d, dict) else d
+            ),
+            "bytes": lambda d: (
+                d["value"].encode("latin-1") if isinstance(d, dict) else d
+            ),
             "set": lambda d: set(d["values"]) if isinstance(d, dict) else d,
         }
 
         # Merge custom decoders with default decoders
-        decoders = {**default_decoders, **(custom_decoders or {})}
+        return {**default_decoders, **(custom_decoders or {})}
+
+    @staticmethod
+    def _is_custom_object(marker: Dict[str, Any]) -> bool:
+        """
+        True for the marker the encoder writes for an arbitrary object.  Reading never imports
+        the named module or builds the class; the object reads back as its attributes dict,
+        the same data dict() produced for it before.
+        """
+        return marker.keys() == {
+            TYPE_MARKER_KEY,
+            "__module__",
+            "attributes",
+        } and isinstance(marker["attributes"], dict)
+
+    @classmethod
+    def decode(
+        cls,
+        dct: Union[str, Dict[str, Any], List[Any]],
+        custom_decoders: Optional[Dict[str, Callable[[Any], Any]]] = None,
+        use_ordered_dict: bool = True,
+    ) -> Any:
+        """
+        Decode complex types, including nested datetime fields
+
+        Args:
+            dct: Dictionary to decode
+            custom_decoders: Optional additional custom decoders
+            use_ordered_dict: Flag to control whether to use OrderedDict or not
+
+        Returns:
+            Reconstructed object or original dictionary
+        """
+
+        decoders = cls._build_decoders(custom_decoders)
 
         # Recursively decode nested structures
         def recursive_decode(value: Any) -> Any:
             if isinstance(value, dict):
                 # Check for type marker in the dictionary
-                if "__type__" in value:
-                    type_name = value["__type__"]
+                if TYPE_MARKER_KEY in value:
+                    type_name = value[TYPE_MARKER_KEY]
 
                     # Handle built-in type decoders
                     if type_name in decoders:
                         return decoders[type_name](value)
-
-                    # Handle custom object reconstruction
-                    if "__module__" in value and "attributes" in value:
-                        try:
-                            # Dynamically import the class
-                            module = __import__(
-                                value["__module__"], fromlist=[type_name]
-                            )
-                            cls_ = getattr(module, type_name)
-
-                            # Create instance and set attributes with recursive decoding
-                            obj = cls_.__new__(cls_)
-                            obj.__dict__.update(
-                                {
-                                    k: recursive_decode(v)
-                                    for k, v in value["attributes"].items()
-                                }
-                            )
-                            return obj
-                        except (ImportError, AttributeError) as e:
-                            logger.error(f"Could not reconstruct {type_name}: {e}")
-                            return value
+                    if cls._is_custom_object(value):
+                        return recursive_decode(value["attributes"])
 
                 # Recursively decode dictionary values
                 # Conditionally use OrderedDict or regular dict
@@ -133,3 +136,51 @@ class TypePreservationDecoder:
 
         # Start recursive decoding
         return recursive_decode(dct)
+
+    @classmethod
+    def decode_tree(
+        cls,
+        parsed: Any,
+        custom_decoders: Optional[Dict[str, Callable[[Any], Any]]] = None,
+        use_ordered_dict: bool = True,
+    ) -> Any:
+        """
+        Single-pass equivalent of json.loads(object_hook=decode): rebuilds an already-parsed
+        plain JSON structure (dict/list/scalars), converting dicts to OrderedDict (or plain
+        dict when use_ordered_dict is False) and reconstructing typed values.  Children are decoded before their parent, exactly as
+        the object_hook sequence would, but each node is visited once.
+
+        Args:
+            parsed: Output of a plain JSON parser (e.g. orjson.loads)
+            custom_decoders: Optional additional custom decoders
+            use_ordered_dict: Whether to use OrderedDict for decoded dicts
+
+        Returns:
+            Reconstructed object
+        """
+        decoders = cls._build_decoders(custom_decoders)
+        dict_type = OrderedDict if use_ordered_dict else dict
+
+        def walk(value: Any) -> Any:
+            # Only containers need a recursive call; scalars (the vast majority of nodes) are
+            # kept as-is.  orjson only produces exact dict/list, so `type() is` is safe.
+            if type(value) is dict:
+                if TYPE_MARKER_KEY in value:
+                    children = {
+                        k: walk(v) if type(v) in _CONTAINERS else v
+                        for k, v in value.items()
+                    }
+                    type_name = children[TYPE_MARKER_KEY]
+                    if type_name in decoders:
+                        return decoders[type_name](children)
+                    if cls._is_custom_object(children):
+                        return children["attributes"]
+                    return dict_type(children)
+                decoded: Dict[str, Any] = dict_type(value)
+                for k, v in value.items():
+                    if type(v) in _CONTAINERS:
+                        decoded[k] = walk(v)
+                return decoded
+            return [walk(item) if type(item) in _CONTAINERS else item for item in value]
+
+        return walk(parsed) if type(parsed) in _CONTAINERS else parsed

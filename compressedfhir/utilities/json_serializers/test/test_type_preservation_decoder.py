@@ -72,19 +72,75 @@ def test_complex_type_decoding(
     assert isinstance(decoded, expected_type)
 
 
-def test_custom_object_decoding() -> None:
+def test_custom_object_marker_is_not_rebuilt() -> None:
     """
-    Test decoding of custom objects
+    Data never chooses which class gets instantiated: a custom-object marker reads back as
+    its attributes dict.
     """
-    custom_obj_dict = {
+    marker = {
         "__type__": "TestCustomObject",
         "__module__": __name__,
         "attributes": {"name": "test", "value": 42},
     }
-    decoded = TypePreservationDecoder.decode(custom_obj_dict)
-    assert isinstance(decoded, TestCustomObject)
-    assert decoded.name == "test"
-    assert decoded.value == 42
+    for decoded in (
+        TypePreservationDecoder.decode(dict(marker)),
+        TypePreservationDecoder.decode_tree(dict(marker)),
+        TypePreservationDecoder.decode_tree(dict(marker), use_ordered_dict=False),
+    ):
+        assert not isinstance(decoded, TestCustomObject)
+        assert dict(decoded) == marker["attributes"]
+
+
+def test_custom_object_is_rebuilt_only_by_an_explicit_decoder() -> None:
+    marker = {
+        "__type__": "TestCustomObject",
+        "__module__": __name__,
+        "attributes": {"name": "test", "value": 42},
+    }
+
+    def rebuild(data: Dict[str, Any]) -> Any:
+        return TestCustomObject(**data["attributes"])
+
+    for decoded in (
+        TypePreservationDecoder.decode(
+            dict(marker), custom_decoders={"TestCustomObject": rebuild}
+        ),
+        TypePreservationDecoder.decode_tree(
+            dict(marker), custom_decoders={"TestCustomObject": rebuild}
+        ),
+    ):
+        assert isinstance(decoded, TestCustomObject)
+        assert decoded.name == "test"
+        assert decoded.value == 42
+
+
+def test_marker_naming_a_module_never_imports_it(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reading data must not import a module by name or instantiate a class from it."""
+    import sys
+
+    marker_file = tmp_path / "imported.txt"
+    (tmp_path / "decoder_probe_module.py").write_text(
+        f"import pathlib\npathlib.Path({str(marker_file)!r}).write_text('imported')\n"
+        "class Victim:\n    pass\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "decoder_probe_module", raising=False)
+    payload = {
+        "__type__": "Victim",
+        "__module__": "decoder_probe_module",
+        "attributes": {"role": "injected"},
+    }
+    not_a_class = {"__type__": "path", "__module__": "os", "attributes": {}}
+    for data in (payload, not_a_class):
+        for decoded in (
+            TypePreservationDecoder.decode(dict(data)),
+            TypePreservationDecoder.decode_tree(dict(data)),
+        ):
+            assert isinstance(decoded, dict)
+    assert not marker_file.exists()
+    assert "decoder_probe_module" not in sys.modules
 
 
 def test_custom_decoder() -> None:
@@ -106,7 +162,7 @@ def test_custom_decoder() -> None:
 
 def test_nested_datetime_decoding() -> None:
     """
-    Test decoding of nested datetime fields
+    Typed values nested inside a custom-object marker are still decoded
     """
     nested_datetime_dict = {
         "__type__": "TestCustomObject",
@@ -121,26 +177,18 @@ def test_nested_datetime_decoding() -> None:
         },
     }
 
-    decoded: TestCustomObject = TypePreservationDecoder.decode(nested_datetime_dict)
+    decoded = TypePreservationDecoder.decode(nested_datetime_dict)
 
-    assert isinstance(decoded, TestCustomObject)
-    assert decoded.name == "test"
-    assert decoded.value == 42
-
-    # Check nested datetime fields
-    assert hasattr(decoded, "created_at")
-    assert isinstance(decoded.created_at, datetime)
-    assert decoded.created_at.year == 2023
-    assert decoded.created_at.month == 6
-    assert decoded.created_at.day == 15
-
-    assert hasattr(decoded, "nested_data")
-    assert isinstance(decoded.nested_data, dict)
-    assert "timestamp" in decoded.nested_data
-    assert isinstance(decoded.nested_data["timestamp"], datetime)
-    assert decoded.nested_data["timestamp"].year == 2023
-    assert decoded.nested_data["timestamp"].month == 6
-    assert decoded.nested_data["timestamp"].day == 16
+    assert isinstance(decoded, dict)
+    attributes = decoded
+    assert attributes["name"] == "test"
+    assert attributes["value"] == 42
+    assert isinstance(attributes["created_at"], datetime)
+    assert (attributes["created_at"].year, attributes["created_at"].month) == (2023, 6)
+    assert attributes["created_at"].day == 15
+    assert isinstance(attributes["nested_data"], dict)
+    assert isinstance(attributes["nested_data"]["timestamp"], datetime)
+    assert attributes["nested_data"]["timestamp"].day == 16
 
 
 def test_direct_value_decoding() -> None:

@@ -1,5 +1,4 @@
 import copy
-import json
 from typing import Any, Dict, Optional, List
 
 from compressedfhir.fhir.fhir_bundle_entry_search import FhirBundleEntrySearch
@@ -15,7 +14,7 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict import (
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode import (
     CompressedDictStorageMode,
 )
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
+from compressedfhir.utilities.fhir_json_encoder import render_json
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
 
@@ -139,11 +138,24 @@ class FhirBundleEntry:
             self._resource = None
 
     def dict(self) -> Dict[str, Any]:
+        """
+        Plain nested dict of the entry (empty elements removed).  See CompressedDict.dict()
+        for how values are converted.
+        """
+        return self._build_dict(exact=False)
+
+    def _dict_exact(self) -> Dict[str, Any]:
+        """Like dict(), with the resource built by the standard library so NaN survives."""
+        return self._build_dict(exact=True)
+
+    def _build_dict(self, *, exact: bool) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
         if self.fullUrl is not None:
             result["fullUrl"] = self.fullUrl
         if self.resource is not None:
-            result["resource"] = self.resource.dict()
+            result["resource"] = (
+                self.resource._dict_exact() if exact else self.resource.dict()
+            )
         if self.request is not None:
             result["request"] = self.request.dict()
         if self.response is not None:
@@ -152,7 +164,15 @@ class FhirBundleEntry:
             result["link"] = [link.dict() for link in self.link]
         if self.search is not None:
             result["search"] = self.search.dict()
-        return FhirClientJsonHelpers.remove_empty_elements(result)
+        # FhirResource.dict() already returns a pruned dict, so don't walk it again
+        return FhirClientJsonHelpers.remove_empty_elements(
+            result,
+            skip_keys=(
+                frozenset({"resource"})
+                if isinstance(self.resource, FhirResource)
+                else frozenset()
+            ),
+        )
 
     @classmethod
     def from_dict(
@@ -190,13 +210,17 @@ class FhirBundleEntry:
             storage_mode=storage_mode,
         )
 
-    def json(self) -> str:
+    def json(self, *, byte_identical: bool = False) -> str:
         """
         Converts the BundleEntry object to a JSON string.
 
+        :param byte_identical: False (default) writes compact orjson text; True writes the
+            exact text of 4.0.0 and earlier.  See CompressedDict.json() for the differences.
         :return: A JSON string representation of the BundleEntry.
         """
-        return json.dumps(obj=self.dict(), cls=FhirJSONEncoder)
+        return render_json(
+            byte_identical=byte_identical, exact=self._dict_exact, fast=self.dict
+        )
 
     def __deepcopy__(self, memo: Dict[int, Any]) -> "FhirBundleEntry":
         """

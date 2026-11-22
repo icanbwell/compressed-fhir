@@ -1,4 +1,3 @@
-import json
 from typing import (
     Any,
     Optional,
@@ -11,6 +10,7 @@ from typing import (
 )
 
 from compressedfhir.fhir.fhir_resource_list import FhirResourceList
+from compressedfhir.utilities.fhir_json_encoder import render_json
 
 
 class FhirResourceMap:
@@ -40,9 +40,19 @@ class FhirResourceMap:
         Convert the FhirResourceMap to a dictionary representation.
 
         """
+        return self._build_dict(exact=False)
+
+    def _dict_exact(self) -> Dict[str, Any]:
+        """Like dict(), with resources built by the standard library so NaN survives."""
+        return self._build_dict(exact=True)
+
+    def _build_dict(self, *, exact: bool) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
         for key, value in self._resource_map.items():
-            result[key] = [resource.dict() for resource in value]
+            result[key] = [
+                resource._dict_exact() if exact else resource.dict()
+                for resource in value
+            ]
         return result
 
     def get(self, *, resource_type: str) -> Optional[FhirResourceList]:
@@ -159,13 +169,17 @@ class FhirResourceMap:
                 combined_resources.extend(resources)
         return combined_resources
 
-    def json(self) -> str:
+    def json(self, *, byte_identical: bool = False) -> str:
         """
-        Convert the list of FhirResource objects to a JSON string.
+        Convert the map to a JSON string.
 
-        :return: JSON string representation of the list.
+        :param byte_identical: False (default) writes compact orjson text; True writes the
+            exact text of 4.0.0 and earlier.  See CompressedDict.json() for the differences.
+        :return: JSON string representation of the map.
         """
-        return json.dumps(self.dict())
+        return render_json(
+            byte_identical=byte_identical, exact=self._dict_exact, fast=self.dict
+        )
 
     def get_count_of_resource_types(self) -> int:
         """

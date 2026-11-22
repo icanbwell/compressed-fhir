@@ -1,8 +1,22 @@
 import json
-from typing import Any, Dict, List, Union, Optional, cast, overload
+import logging
+import math
+from decimal import Decimal
+from typing import Any, Dict, List, Union, Optional, overload
 from datetime import datetime, date
 
 import orjson
+
+logger = logging.getLogger(__name__)
+
+
+def _is_non_finite(x: Any) -> bool:
+    """True for NaN and +/-Infinity, as float or Decimal."""
+    if type(x) is float:
+        return not math.isfinite(x)
+    if isinstance(x, Decimal):
+        return not x.is_finite()
+    return False
 
 
 def _is_empty(x: Any) -> bool:
@@ -14,23 +28,6 @@ def _is_empty(x: Any) -> bool:
     if isinstance(x, (list, dict)):
         return len(x) == 0
     return bool(x == [] or x == {})
-
-
-def _remove_empty_elements(d: Any) -> Any:
-    # Called for every value in a resource, so it checks against the builtin dict/list.
-    # isinstance against typing.Dict goes through typing's slow __instancecheck__
-    # and dominated the cost of FhirResource.json().
-    if isinstance(d, dict):
-        result: Dict[str, Any] = {}
-        for k, v in d.items():
-            v = _remove_empty_elements(v)
-            if not _is_empty(v):
-                result[k] = v
-        return result
-    if isinstance(d, list):
-        stripped = (_remove_empty_elements(v) for v in d)
-        return [v for v in stripped if not _is_empty(v)]
-    return d
 
 
 class FhirClientJsonHelpers:
@@ -50,6 +47,8 @@ class FhirClientJsonHelpers:
     @staticmethod
     def remove_empty_elements(
         d: Dict[str, Any],
+        skip_keys: frozenset[str] = frozenset(),
+        drop_non_finite: bool = False,
     ) -> Dict[str, Any]: ...
 
     @overload
@@ -61,31 +60,100 @@ class FhirClientJsonHelpers:
     @staticmethod
     def remove_empty_elements(
         d: List[Dict[str, Any]] | Dict[str, Any],
+        skip_keys: frozenset[str] = frozenset(),
+        drop_non_finite: bool = False,
     ) -> List[Dict[str, Any]] | Dict[str, Any]:
         """
         Recursively remove empty lists, empty dicts, or None elements from a dictionary
         or a list of dictionaries
         :param d: dictionary or list of dictionaries
+        :param skip_keys: top-level keys whose values the caller has already pruned; they are
+                          kept as-is (still dropped if empty) instead of being walked again
+        :param drop_non_finite: also drop NaN/Infinity floats and Decimals, which FHIR JSON
+                                cannot hold (the default json()/dict() output omits them)
         :return: dictionary or list of dictionaries
         """
 
-        return cast(
-            List[Dict[str, Any]] | Dict[str, Any],
-            _remove_empty_elements(d),
-        )
+        # int/float/bool can never be empty, so they skip the equality checks below
+        scalar_types = (int, float, bool)
+
+        def prune_list(items: List[Any]) -> List[Any]:
+            kept: List[Any] = []
+            for v in items:
+                if v is None:
+                    continue
+                if isinstance(v, dict):
+                    v = prune_dict(v)
+                elif isinstance(v, list):
+                    v = prune_list(v)
+                elif type(v) in scalar_types:
+                    if drop_non_finite and _is_non_finite(v):
+                        continue
+                    kept.append(v)
+                    continue
+                elif drop_non_finite and _is_non_finite(v):
+                    continue
+                if not _is_empty(v):
+                    kept.append(v)
+            return kept
+
+        def prune_dict(
+            items: Dict[str, Any], skip: frozenset[str] = frozenset()
+        ) -> Dict[str, Any]:
+            kept: Dict[str, Any] = {}
+            for k, v in items.items():
+                if v is None:
+                    continue
+                if k in skip:
+                    pass
+                elif isinstance(v, dict):
+                    v = prune_dict(v)
+                elif isinstance(v, list):
+                    v = prune_list(v)
+                elif type(v) in scalar_types:
+                    if drop_non_finite and _is_non_finite(v):
+                        continue
+                    kept[k] = v
+                    continue
+                elif drop_non_finite and _is_non_finite(v):
+                    continue
+                if not _is_empty(v):
+                    kept[k] = v
+            return kept
+
+        if isinstance(d, list):
+            return prune_list(d)
+        if isinstance(d, dict):
+            return prune_dict(d, skip_keys)
+        return d
 
     @staticmethod
-    def convert_dict_to_fhir_json(dict_: Dict[str, Any]) -> str:
+    def convert_dict_to_fhir_json(
+        dict_: Dict[str, Any], *, byte_identical: bool = False
+    ) -> str:
         """
         Returns dictionary as JSON string
 
-
-        :return:
+        :param dict_: the dictionary; empty elements are removed first
+        :param byte_identical: False (default) writes compact orjson text.  Inputs orjson
+            writes natively differ from the exact text: a plain Enum is written as its value
+            (not str(enum)), a dataclass as a dict (not its repr), NaN/Infinity as null.
+            Anything orjson raises on falls back to the standard library.  True writes
+            exactly the text json.dumps with json_serial wrote in 4.0.0 and earlier.
+        :return: JSON text
         """
         instance_variables: Dict[str, Any] = (
             FhirClientJsonHelpers.remove_empty_elements(dict_)
         )
-
+        if not byte_identical:
+            try:
+                return orjson.dumps(
+                    instance_variables, default=FhirClientJsonHelpers.json_serial
+                ).decode()
+            except TypeError as e:  # orjson.JSONEncodeError subclasses TypeError
+                logger.debug(
+                    "convert_dict_to_fhir_json fell back to the standard library: %s", e
+                )
         instance_variables_text: str = json.dumps(
             instance_variables, default=FhirClientJsonHelpers.json_serial
         )

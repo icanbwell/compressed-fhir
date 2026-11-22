@@ -557,6 +557,47 @@ def test_replace_top_level_mutation_does_not_affect_compressed_dict(
     assert cd.dict() == {"a": 1, "b": 2}
 
 
+class TestCompressedDictEqualityWithPlainDicts:
+    @staticmethod
+    def _make(initial: dict[str, Any]) -> CompressedDict[str, Any]:
+        return CompressedDict(
+            initial_dict=initial,
+            storage_mode=CompressedDictStorageMode.default(),
+            properties_to_cache=[],
+        )
+
+    def test_equal_to_plain_dict_regardless_of_key_order(self) -> None:
+        cd = self._make({"a": 1, "b": {"x": 1, "y": [{"p": 1, "q": 2}]}})
+        assert cd == {"b": {"y": [{"q": 2, "p": 1}], "x": 1}, "a": 1}
+        assert {"b": {"y": [{"q": 2, "p": 1}], "x": 1}, "a": 1} == cd
+
+    def test_two_compressed_dicts_equal_regardless_of_nested_key_order(self) -> None:
+        a = self._make({"a": 1, "b": {"x": 1, "y": 2}})
+        b = self._make({"b": {"y": 2, "x": 1}, "a": 1})
+        assert a == b
+
+    def test_equal_to_ordered_dict(self) -> None:
+        from collections import OrderedDict
+
+        cd = self._make({"a": 1, "b": {"x": 1, "y": 2}})
+        assert cd == OrderedDict([("b", OrderedDict([("y", 2), ("x", 1)])), ("a", 1)])
+
+    @pytest.mark.parametrize(
+        "other",
+        [
+            {"a": 1},
+            {"a": 1, "b": {"x": 1, "y": 3}},
+            {"a": 1, "b": {"x": 1, "y": 2}, "c": 3},
+            [("a", 1)],
+            None,
+            "a",
+        ],
+    )
+    def test_not_equal(self, other: object) -> None:
+        cd = self._make({"a": 1, "b": {"x": 1, "y": 2}})
+        assert cd != other
+
+
 @pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
 def test_to_plain_dict_returns_detached_copy(storage_type: Any) -> None:
     # Arrange

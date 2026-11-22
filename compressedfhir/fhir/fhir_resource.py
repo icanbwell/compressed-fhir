@@ -1,5 +1,4 @@
 import copy
-import json
 from typing import Any, Optional, Dict, List, cast, override
 
 from compressedfhir.fhir.fhir_meta import FhirMeta
@@ -9,8 +8,6 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict import (
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode import (
     CompressedDictStorageMode,
 )
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
-from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
 
 class FhirResource(CompressedDict[str, Any]):
@@ -19,6 +16,9 @@ class FhirResource(CompressedDict[str, Any]):
     """
 
     __slots__ = CompressedDict.__slots__
+
+    # FHIR output drops empty elements
+    _PRUNE_EMPTY_ON_JSON = True
 
     def __init__(
         self,
@@ -149,20 +149,10 @@ class FhirResource(CompressedDict[str, Any]):
             ),
         )
 
-    @override
-    def json(self) -> str:
-        """Convert the resource to a JSON string."""
-
-        # working_dict preserves the python types so create a fhir friendly version
-        raw_dict: Dict[str, Any] = self.raw_dict()
-
-        raw_dict = FhirClientJsonHelpers.remove_empty_elements(raw_dict)
-        return json.dumps(obj=raw_dict, cls=FhirJSONEncoder)
-
     def to_fhir_dict(self) -> Dict[str, Any]:
         """
         Convert the resource to a FHIR-compliant dictionary.
 
         :return: A dictionary representation of the resource.
         """
-        return cast(Dict[str, Any], json.loads(self.json()))
+        return self.dict()

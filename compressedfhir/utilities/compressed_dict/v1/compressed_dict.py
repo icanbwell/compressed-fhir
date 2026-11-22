@@ -1,10 +1,21 @@
 import copy
 import json
+import logging
 from collections.abc import KeysView, ValuesView, ItemsView, MutableMapping
 from contextlib import contextmanager
-from typing import Dict, Optional, Iterator, cast, List, Any, overload
+from typing import (
+    Dict,
+    Optional,
+    Iterator,
+    cast,
+    List,
+    Any,
+    ClassVar,
+    overload,
+)
 
 import msgpack
+import orjson
 import zlib
 
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_access_error import (
@@ -14,10 +25,21 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode im
     CompressedDictStorageMode,
     CompressedDictStorageType,
 )
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
+from compressedfhir.utilities.fhir_json_encoder import (
+    FHIR_JSON_ENCODER,
+    FhirJSONEncoder,
+    render_json,
+)
+from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
+from compressedfhir.utilities.json_serializers.type_preserved_to_fhir_json import (
+    TypePreservedToFhirJson,
+)
 from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
+    NativeUnsupported,
     TypePreservationSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CompressedDict[K, V](MutableMapping[K, V]):
@@ -26,6 +48,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
 
     It can store data in raw format, MessagePack format, or compressed MessagePack format.
     """
+
+    # Subclasses set this to drop empty elements from json() and dict() output
+    _PRUNE_EMPTY_ON_JSON: ClassVar[bool] = False
 
     # use slots to reduce memory usage
     __slots__ = [
@@ -166,10 +191,10 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             Serialized bytes
         """
         if storage_type == "compressed":
-            # Serialize to JSON and compress with zlib
-            json_str = TypePreservationSerializer.serialize(dictionary)
+            # Serialize to JSON (orjson, stdlib fallback) and compress with zlib
             return zlib.compress(
-                json_str.encode("utf-8"), level=zlib.Z_BEST_COMPRESSION
+                TypePreservationSerializer.serialize_to_bytes(dictionary),
+                level=zlib.Z_BEST_COMPRESSION,
             )
 
         # Serialize using MessagePack
@@ -205,11 +230,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
 
         if storage_type == "compressed":
             # Decompress and parse JSON
-            decompressed_bytes: bytes = zlib.decompress(serialized_dict_bytes)
-            decoded_text: str = decompressed_bytes.decode("utf-8")
             # noinspection PyTypeChecker
-            decompressed_dict = TypePreservationSerializer.deserialize(
-                decoded_text, use_ordered_dict=False
+            decompressed_dict = TypePreservationSerializer.deserialize_stored(
+                zlib.decompress(serialized_dict_bytes)
             )
             if not isinstance(decompressed_dict, dict):
                 raise TypeError(
@@ -436,20 +459,111 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         Convert to a FHIR friendly dictionary where the python types like datetime are converted to string versions
         For example, datetime will be represented as a iso format string per FHIR instead of a python datetime object.
 
+        Returns plain nested dicts (key order is kept).  This is meant for FHIR JSON and goes
+        through orjson, so NaN/Infinity become None; payloads orjson cannot encode (integers
+        beyond 64 bits, non-string keys) fall back to the standard library.
+
         Returns:
             FHIR friendly dictionary
         """
-        return cast(
-            Dict[K, V],
-            json.loads(self.json()),
+        fast = self._plain_dict_from_stored_json()
+        if fast is not None:
+            return cast(Dict[K, V], fast)
+        source = self._json_source(drop_non_finite=True)
+        try:
+            encoded = orjson.loads(
+                orjson.dumps(
+                    source,
+                    default=FHIR_JSON_ENCODER.default,
+                    # route datetime/date/time through FhirJSONEncoder for identical output
+                    option=orjson.OPT_PASSTHROUGH_DATETIME
+                    | orjson.OPT_PASSTHROUGH_DATACLASS,
+                )
+            )
+        except TypeError as e:  # orjson.JSONEncodeError subclasses TypeError
+            logger.debug("dict() fell back to the standard library: %s", e)
+            encoded = json.loads(json.dumps(obj=source, cls=FhirJSONEncoder))
+        return self._prune_encoded(encoded, drop_non_finite=True)
+
+    def _prune_encoded(self, encoded: Any, *, drop_non_finite: bool) -> Dict[K, V]:
+        """
+        Encoding can create new empty elements (set() becomes [], b"" becomes ""), which were
+        not empty when _json_source pruned the python values, so prune the encoded data again.
+        """
+        if not self._PRUNE_EMPTY_ON_JSON:
+            return cast(Dict[K, V], encoded)
+        pruned = FhirClientJsonHelpers.remove_empty_elements(
+            encoded, drop_non_finite=drop_non_finite
+        )
+        return cast(Dict[K, V], pruned)
+
+    def _dict_exact(self) -> Dict[K, V]:
+        """
+        Like dict(), but built with the standard library so NaN/Infinity survive.  The exact
+        (byte_identical=True) text of bundles and maps is written from these.
+        """
+        return self._prune_encoded(
+            json.loads(json.dumps(self._json_source(), cls=FhirJSONEncoder)),
+            drop_non_finite=False,
         )
 
-    def json(self) -> str:
-        """Convert the resource to a JSON string."""
+    def _plain_dict_from_stored_json(self) -> Optional[Dict[str, Any]]:
+        """
+        Fast path for dict(): converts the stored type-preserving JSON straight into FHIR
+        friendly plain data in one pass, without rebuilding Python objects and re-serializing.
+        Returns None whenever the result could differ from the general path (not in compressed
+        storage, an open transaction, or content the converter cannot reproduce exactly).
+        """
+        if (
+            self._storage_mode.storage_type != "compressed"
+            or self._working_dict is not None
+            or not self._serialized_dict
+        ):
+            return None
+        try:
+            parsed = TypePreservationSerializer.parse_stored(
+                zlib.decompress(self._serialized_dict)
+            )
+            return cast(
+                Dict[str, Any],
+                TypePreservedToFhirJson.convert(
+                    parsed, prune_empty=self._PRUNE_EMPTY_ON_JSON
+                ),
+            )
+        except NativeUnsupported as e:
+            logger.debug("dict() fast path not used: %s", e)
+            return None
 
-        raw_dict: Dict[K, V] = self.raw_dict()
+    def _json_source(self, *, drop_non_finite: bool = False) -> Dict[K, V]:
+        """
+        The dictionary that json() and dict() serialize.  The exact text keeps NaN/Infinity as
+        the standard library writes them; the default outputs drop them (FHIR cannot hold them),
+        which matches storage, where orjson has already turned them into null.
+        """
+        raw = self.raw_dict()
+        if self._PRUNE_EMPTY_ON_JSON:
+            # working_dict preserves the python types, so drop empty elements before serializing
+            return cast(
+                Dict[K, V],
+                FhirClientJsonHelpers.remove_empty_elements(
+                    cast(Dict[str, Any], raw), drop_non_finite=drop_non_finite
+                ),
+            )
+        return raw
 
-        return json.dumps(obj=raw_dict, cls=FhirJSONEncoder)
+    def json(self, *, byte_identical: bool = False) -> str:
+        """
+        Convert the resource to a JSON string.
+
+        Args:
+            byte_identical: False (default) writes compact orjson text (raw UTF-8 instead of
+                \\uXXXX escapes, 1e-7 instead of 1e-07, null for NaN/Infinity).  The JSON is
+                equivalent for any parser.  True writes exactly the text json.dumps with
+                FhirJSONEncoder wrote in 4.0.0 and earlier.
+        """
+        return render_json(
+            byte_identical=byte_identical, exact=self._json_source, fast=self.dict
+        )
 
     def __repr__(self) -> str:
         """
@@ -499,6 +613,9 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         """
         Check equality with another dictionary
 
+        Compares plain dictionaries, so key order is ignored at every level, whether other is a
+        CompressedDict, a dict or an OrderedDict.
+
         Args:
             other: Dictionary to compare with (CompressedDict or plain dict)
 
@@ -512,11 +629,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         # Get the dictionary representation of self
         self_dict = self.dict()
 
-        # If other is a CompressedDict, use its dict() method
-        if isinstance(other, CompressedDict):
-            other_dict = other.dict()
-        else:
-            other_dict = other
+        # If other is a CompressedDict, use its dict() method; otherwise use it directly
+        other_dict = other.dict() if isinstance(other, CompressedDict) else other
 
         # Compare keys and values
         # Check that all keys in both dictionaries match exactly

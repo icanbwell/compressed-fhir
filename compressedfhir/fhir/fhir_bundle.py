@@ -1,5 +1,4 @@
 import copy
-import json
 from typing import Any, Dict, List, Optional, cast
 
 from compressedfhir.fhir.fhir_bundle_entry import FhirBundleEntry
@@ -11,7 +10,7 @@ from compressedfhir.fhir.fhir_resource import FhirResource
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode import (
     CompressedDictStorageMode,
 )
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
+from compressedfhir.utilities.fhir_json_encoder import render_json
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
 
@@ -66,8 +65,28 @@ class FhirBundle:
         self.meta: Optional[FhirMeta] = meta
 
     def dict(self) -> Dict[str, Any]:
+        """
+        Plain nested dict of the bundle (empty elements removed).  See CompressedDict.dict()
+        for how values are converted.
+        """
+        return self._build_dict(exact=False)
+
+    def _dict_exact(self) -> Dict[str, Any]:
+        """Like dict(), with resources built by the standard library so NaN survives."""
+        return self._build_dict(exact=True)
+
+    def _build_dict(self, *, exact: bool) -> Dict[str, Any]:
+        # entry dicts are already pruned; an entry that pruned down to nothing is dropped
         entries: List[Dict[str, Any]] | None = (
-            [entry.dict() for entry in self.entry] if self.entry else None
+            [
+                entry_dict
+                for entry_dict in (
+                    entry._build_dict(exact=exact) for entry in self.entry
+                )
+                if entry_dict
+            ]
+            if self.entry
+            else None
         )
         result: Dict[str, Any] = {"type": self.type_, "resourceType": "Bundle"}
 
@@ -85,7 +104,9 @@ class FhirBundle:
             result["link"] = [link.dict() for link in self.link]
         if self.meta:
             result["meta"] = self.meta.dict()
-        return FhirClientJsonHelpers.remove_empty_elements(result)
+        return FhirClientJsonHelpers.remove_empty_elements(
+            result, skip_keys=frozenset({"entry"})
+        )
 
     @classmethod
     def construct(
@@ -196,14 +217,17 @@ class FhirBundle:
                         coding.extend(diagnostics_coding)
         return resource
 
-    def json(self) -> str:
+    def json(self, *, byte_identical: bool = False) -> str:
         """
         Converts the Bundle to a JSON string.
 
+        :param byte_identical: False (default) writes compact orjson text; True writes the
+            exact text of 4.0.0 and earlier.  See CompressedDict.json() for the differences.
         :return: JSON string representation of the Bundle
         """
-        bundle_dict = self.dict()
-        return json.dumps(bundle_dict, cls=FhirJSONEncoder)
+        return render_json(
+            byte_identical=byte_identical, exact=self._dict_exact, fast=self.dict
+        )
 
     def copy(self) -> "FhirBundle":
         return copy.deepcopy(self)
