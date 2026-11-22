@@ -846,9 +846,10 @@ def test_data_serialized_by_3x_still_deserializes(
     assert structure(result) == structure(expected_factory())
 
 
-def test_compressed_storage_writes_the_3x_type_preserving_json_text() -> None:
+def test_compressed_storage_writes_the_3x_type_preserving_content() -> None:
     # Arrange
     resource = make_dict(golden_source(), "compressed")
+    golden_text = zlib.decompress(GOLDEN_BYTES["compressed"]).decode("utf-8")
 
     # Act
     stored = resource._serialized_dict
@@ -856,8 +857,13 @@ def test_compressed_storage_writes_the_3x_type_preserving_json_text() -> None:
     stored_text = zlib.decompress(stored).decode("utf-8")
 
     # Assert
-    assert stored_text == GOLDEN_COMPRESSED_JSON_TEXT
-    assert zlib.decompress(GOLDEN_BYTES["compressed"]).decode("utf-8") == stored_text
+    # Compared as parsed JSON, not as text: the text layout (whitespace, \\uXXXX escapes
+    # versus raw UTF-8) is a writer detail that may change without changing what 3.x readers see.
+    # structure() keeps leaf types and key order, so 1 / 1.0 / True and reordered keys still fail.
+    assert structure(json.loads(stored_text)) == structure(
+        json.loads(GOLDEN_COMPRESSED_JSON_TEXT)
+    )
+    assert structure(json.loads(golden_text)) == structure(json.loads(stored_text))
 
 
 def test_msgpack_storage_writes_the_3x_bytes() -> None:
