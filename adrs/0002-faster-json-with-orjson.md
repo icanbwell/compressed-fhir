@@ -69,6 +69,13 @@ Chosen option: **3**, released as **5.0.0** because it changes the default `json
 * One known kind of downstream coupling: code that estimates a payload size from `json.dumps` text
   and compares it with `len(resource.json())` must pass `byte_identical=True` when it upgrades.
 
+## Sign-off
+
+The 5.0.0 breaking changes (default `json()` text, NaN omission, custom-object read-back) were
+approved by Imran Qureshi as an out-of-band decision, not through a Tech Design Review. Any
+fallout in a dependent project is expected to surface when that project upgrades to 5.0.0, and
+each upgrade is its own check.
+
 ## References
 
 * PR #30 (faster pruner, 3.0.6), PR #16 (plain dicts, 4.0.0), PR #31 (this work).
