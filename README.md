@@ -45,15 +45,49 @@ resource1 = FhirResource(
     storage_mode=CompressedDictStorageMode.default(),
 )
 
-my_dict: dict[str, Any] = resource1.dict()
+my_dict: dict[str, Any] = resource1.dict()  # plain nested dicts (fast)
 my_plain_dict: dict[str, Any] = resource1.to_plain_dict()
-my_json: str = resource1.json()
+my_json: str = resource1.json()  # compact orjson text (fast)
+my_exact_json: str = resource1.json(byte_identical=True)  # exactly the text 4.0.0 and earlier wrote
 
 with resource1.transaction():
    assert "email" not in resource1
    assert resource1.get("name") == "Custom Mode User"
    assert resource1.get("active") is True
 ```
+
+## Upgrading to 5.0.0
+
+5.0.0 is several times faster than 4.0.0 because JSON is parsed and written with orjson. It changes
+the default output of `json()`, so it is a major version:
+
+| Call | 4.0.0 | 5.0.0 default | To keep the 4.0.0 text |
+|---|---|---|---|
+| `json()` on resources, bundles, bundle entries, resource lists and `FhirResourceMap` | stdlib text (`", "` separators, `\uXXXX` escapes, `1e-07`) | compact orjson text (raw UTF-8, `1e-7`) | `json(byte_identical=True)` |
+| `FhirClientJsonHelpers.convert_dict_to_fhir_json()` | the same stdlib text | compact orjson text | `byte_identical=True` |
+
+`dict()` already returns plain nested dicts since 4.0.0 and still does.
+
+Details:
+
+- The JSON is equivalent for any parser.
+- **NaN and Infinity** cannot be written in FHIR JSON, so `dict()` and `json()` now omit them, and
+  compressed storage records them as `null` when the resource is built (`raw_dict()` returns `None`
+  for them). `json(byte_identical=True)` still writes a NaN held in raw storage as `NaN`, but a
+  compressed resource no longer has it.
+- A plain `Enum` or a `UUID` inside a resource is now accepted and stored as its value or string
+  (it raised `TypeError` before).
+- `convert_dict_to_fhir_json()` also writes a plain `Enum` as its value (it wrote `str(enum)`), a
+  dataclass as a dict (it wrote its `repr`), and NaN as `null`.
+- Integers beyond 64 bits and non-string keys still work and stay exact: they fall back to the
+  standard library.
+- Stored data: new compressed blobs start with one space, which JSON parsers ignore, so 4.0.0 can
+  still read them, and blobs written by older versions still load.
+- Upgrading from 3.x: 4.0.0 already changed `dict()` and `raw_dict()` to plain dicts instead of
+  `OrderedDict`, removed the `OrderedDict`-specific helper functions, and made `CompressedDict`
+  equality ignore key order at every level.
+
+The reasoning and the alternatives are in `adrs/0002-faster-json-with-orjson.md`.
 
 ## Development Setup
 

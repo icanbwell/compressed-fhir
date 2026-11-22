@@ -6,7 +6,6 @@ import pytest
 
 from compressedfhir.fhir.fhir_resource import FhirResource
 from compressedfhir.fhir.fhir_resource_list import FhirResourceList
-from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 
 
 class TestFhirResourceList:
@@ -92,7 +91,8 @@ class TestFhirResourceList:
         )
 
         # Act
-        json_str = resource_list.json()
+        json_str = resource_list.json(byte_identical=True)
+        compact_str = resource_list.json()
 
         # Assert
         assert json_str == (
@@ -100,46 +100,63 @@ class TestFhirResourceList:
             ' {"id": "456", "resourceType": "Observation"}]'
         )
         assert json.loads(json_str)[1]["resourceType"] == "Observation"
+        # default (4.0.0): compact orjson text, same data
+        assert compact_str == (
+            '[{"id":"123","resourceType":"Patient"},'
+            '{"id":"456","resourceType":"Observation"}]'
+        )
+        assert json.loads(compact_str) == json.loads(json_str)
 
     @pytest.mark.parametrize(
-        "resources",
+        ("resources", "expected_exact_text"),
         [
-            [],
-            [{"resourceType": "Patient", "id": "p1", "name": [{"given": ["Ann"]}]}],
-            [
-                {
-                    "resourceType": "Observation",
-                    "id": "o1",
-                    "valueQuantity": {"value": 1.10},
-                },
-                {
-                    "resourceType": "Observation",
-                    "id": "o2",
-                    "code": {"text": "Glucosé — 血糖"},
-                },
-                {
-                    "resourceType": "Observation",
-                    "id": "o3",
-                    "extension": [],
-                    "status": "",
-                },
-            ],
+            ([], "[]"),
+            (
+                [{"resourceType": "Patient", "id": "p1", "name": [{"given": ["Ann"]}]}],
+                '[{"resourceType": "Patient", "id": "p1", "name": [{"given": ["Ann"]}]}]',
+            ),
+            (
+                [
+                    {
+                        "resourceType": "Observation",
+                        "id": "o1",
+                        "valueQuantity": {"value": 1.10},
+                    },
+                    {
+                        "resourceType": "Observation",
+                        "id": "o2",
+                        "code": {"text": "Glucosé — 血糖"},
+                    },
+                    {
+                        "resourceType": "Observation",
+                        "id": "o3",
+                        "extension": [],
+                        "status": "",
+                    },
+                ],
+                # literal text produced by the released 4.0.0 package for these resources
+                '[{"resourceType": "Observation", "id": "o1", "valueQuantity": {"value": 1.1}}, '
+                '{"resourceType": "Observation", "id": "o2", "code": {"text": "Glucos\\u00e9 \\u2014 \\u8840\\u7cd6"}}, '
+                '{"resourceType": "Observation", "id": "o3"}]',
+            ),
         ],
         ids=["empty", "single", "floats-non-ascii-and-empties"],
     )
-    def test_to_json_matches_serializing_each_resource_dict(
-        self, resources: List[Dict[str, Any]]
+    def test_to_json_matches_released_text(
+        self, resources: List[Dict[str, Any]], expected_exact_text: str
     ) -> None:
         # Arrange
         resource_list = FhirResourceList([FhirResource.from_dict(r) for r in resources])
 
         # Act
-        json_str = resource_list.json()
+        json_str = resource_list.json(byte_identical=True)
+        compact_str = resource_list.json()
 
-        # Assert: identical to the previous json.dumps([r.dict() for r in self]) output
-        assert json_str == json.dumps(
-            [r.dict() for r in resource_list], cls=FhirJSONEncoder
-        )
+        # Assert: byte_identical=True is exactly what 4.0.0 wrote
+        assert json_str == expected_exact_text
+        # default: compact text that parses to the same data
+        assert json.loads(compact_str) == json.loads(expected_exact_text)
+        assert ", " not in compact_str.split('"code"')[0]
 
     @pytest.mark.asyncio
     async def test_consume_resource_async_default(self) -> None:

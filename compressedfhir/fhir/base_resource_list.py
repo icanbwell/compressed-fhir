@@ -39,15 +39,18 @@ class BaseResourceList[T: CompressedDict[str, Any]](Deque[T]):
         super().append(x)
         # assert isinstance(x, CompressedDict), f"{type(x)} is not a CompressedDict"
 
-    def json(self) -> str:
+    def json(self, *, byte_identical: bool = False) -> str:
         """
         Convert the list of FhirResource objects to a JSON string.
 
+        :param byte_identical: False (default) joins each resource's compact orjson text; True
+            gives exactly the text from before 4.0.0 (json.dumps([r.dict() ...]) formatting).
         :return: JSON string representation of the list.
         """
-        # Same output as json.dumps([r.dict() for r in self]) without parsing each
-        # resource's JSON back into a dict and serializing it again.
-        return "[" + ", ".join(r.json() for r in self) + "]"
+        # Joins each resource's JSON instead of parsing it into a dict and serializing it again.
+        if byte_identical:
+            return "[" + ", ".join(r.json(byte_identical=True) for r in self) + "]"
+        return "[" + ",".join(r.json(byte_identical=False) for r in self) + "]"
 
     def get_resources(self) -> "BaseResourceList[T]":
         """

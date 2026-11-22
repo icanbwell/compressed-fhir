@@ -121,3 +121,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /.idea/
+
+# macOS Finder metadata
+.DS_Store
