@@ -83,7 +83,7 @@ class TypePreservedToFhirJson:
     def _marker(cls, node: Dict[str, Any]) -> Any:
         converter = _MARKER_CONVERTERS.get(node[TYPE_MARKER_KEY])
         if converter is None:  # complex, set, custom objects, unknown markers
-            raise UnsupportedForFastPath(f"marker {node['__type__']!r}")
+            raise UnsupportedForFastPath(f"marker {node[TYPE_MARKER_KEY]!r}")
         value = converter(node)
         if type(value) is str and not value.strip():
             # blank bytes become an empty element only after encoding; the general path prunes

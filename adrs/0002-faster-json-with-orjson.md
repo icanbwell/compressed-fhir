@@ -61,7 +61,7 @@ Chosen option: **3**, released as **5.0.0** because it changes the default `json
 
 ### Consequences
 
-* Good: about 7 to 10x faster `dict()` and `json()` than 4.0.0; about 2x faster resource
+* Good: about 11 to 14x faster `dict()` and `json()` than 4.0.0; about 2x faster resource
   construction; the pruner and decoder do one pass.
 * Bad: a custom object stored in a resource reads back as a dict; default `json()` text changes (compact, raw UTF-8, `1e-7`); callers that hash, compare or
   persist the exact text must pass `byte_identical=True`; NaN is silently omitted; a plain `Enum`

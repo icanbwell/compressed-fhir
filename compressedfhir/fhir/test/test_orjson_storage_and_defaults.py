@@ -469,6 +469,7 @@ def test_integers_at_the_64_bit_boundary_read_back_exact_from_stdlib_text(
     assert resource.dict()["n"] == value
 
 
+# msgpack is excluded: it cannot store sets at all (TypeError on write, also on 4.0.0)
 @pytest.mark.parametrize("storage_type", ["raw", "compressed"])
 def test_entry_and_bundle_drop_empties_created_by_encoding(
     storage_type: CompressedDictStorageType,
@@ -516,7 +517,7 @@ def test_exact_dict_works_when_a_subclass_overrides_json_without_keywords() -> N
     )
 
     class LegacyJson(CompressedDict[str, Any]):
-        def json(self) -> str:  # type: ignore[override]
+        def json(self) -> str:  # type: ignore[override]  # 3.x had no keywords
             return '{"over": 1}'
 
     d = LegacyJson(
