@@ -107,6 +107,33 @@ class TestFhirResourceList:
         )
         assert json.loads(compact_str) == json.loads(json_str)
 
+    @pytest.mark.parametrize("byte_identical", [False, True])
+    def test_json_calls_legacy_resource_override_without_keyword(
+        self, byte_identical: bool
+    ) -> None:
+        # Arrange: a 4.0.0-style subclass whose json() takes no byte_identical keyword
+        class LegacyResource(FhirResource):
+            def json(self) -> str:  # type: ignore[override]
+                return '{"legacy":true}'
+
+        resource_list = FhirResourceList(
+            [
+                LegacyResource.from_dict({"id": "1", "resourceType": "Patient"}),
+                FhirResource.from_dict({"id": "2", "resourceType": "Patient"}),
+            ]
+        )
+
+        # Act
+        text = resource_list.json(byte_identical=byte_identical)
+
+        # Assert
+        separator = ", " if byte_identical else ","
+        assert text.startswith('[{"legacy":true}' + separator + '{"id"')
+        assert json.loads(text) == [
+            {"legacy": True},
+            {"id": "2", "resourceType": "Patient"},
+        ]
+
     @pytest.mark.parametrize(
         ("resources", "expected_exact_text"),
         [

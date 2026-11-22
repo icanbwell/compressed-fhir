@@ -1,4 +1,5 @@
 import copy
+import inspect
 from contextlib import contextmanager
 from typing import (
     Deque,
@@ -16,6 +17,15 @@ from typing import (
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict import (
     CompressedDict,
 )
+
+
+def _accepts_byte_identical(resource_type: type) -> bool:
+    """True when the type's json() takes a byte_identical keyword (or **kwargs)."""
+    parameters = inspect.signature(resource_type.json).parameters.values()  # type: ignore[attr-defined]
+    return any(
+        p.name == "byte_identical" or p.kind is inspect.Parameter.VAR_KEYWORD
+        for p in parameters
+    )
 
 
 class BaseResourceList[T: CompressedDict[str, Any]](Deque[T]):
@@ -48,9 +58,18 @@ class BaseResourceList[T: CompressedDict[str, Any]](Deque[T]):
         :return: JSON string representation of the list.
         """
         # Joins each resource's JSON instead of parsing it into a dict and serializing it again.
-        if byte_identical:
-            return "[" + ", ".join(r.json(byte_identical=True) for r in self) + "]"
-        return "[" + ",".join(r.json(byte_identical=False) for r in self) + "]"
+        # Subclasses written against 4.0.0 override json() without the keyword; call those as before.
+        accepts_keyword = {
+            t: _accepts_byte_identical(t) for t in {type(r) for r in self}
+        }
+
+        def resource_json(r: T) -> str:
+            if accepts_keyword[type(r)]:
+                return r.json(byte_identical=byte_identical)
+            return r.json()
+
+        separator = ", " if byte_identical else ","
+        return "[" + separator.join(resource_json(r) for r in self) + "]"
 
     def get_resources(self) -> "BaseResourceList[T]":
         """

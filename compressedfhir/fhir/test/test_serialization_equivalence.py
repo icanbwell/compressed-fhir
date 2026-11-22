@@ -16,6 +16,9 @@ import pytest
 from compressedfhir.fhir.fhir_bundle import FhirBundle
 from compressedfhir.fhir.fhir_bundle_entry import FhirBundleEntry
 from compressedfhir.fhir.fhir_resource import FhirResource
+from compressedfhir.fhir.test.frozen_decoder_4_0_0 import (
+    FrozenTypePreservationDecoder400,
+)
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict import CompressedDict
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode import (
     CompressedDictStorageMode,
@@ -23,9 +26,6 @@ from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode im
 )
 from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
-from compressedfhir.utilities.json_serializers.type_preservation_decoder import (
-    TypePreservationDecoder,
-)
 from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
     TypePreservationSerializer,
 )
@@ -40,7 +40,8 @@ STORAGE_TYPES: List[CompressedDictStorageType] = [
 
 def reference_deserialize(json_str: str) -> Any:
     return json.loads(
-        json_str, object_hook=lambda dct: TypePreservationDecoder.decode(dct, None)
+        json_str,
+        object_hook=lambda dct: FrozenTypePreservationDecoder400.decode(dct, None),
     )
 
 
