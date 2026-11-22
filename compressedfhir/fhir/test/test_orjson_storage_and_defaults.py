@@ -24,6 +24,7 @@ from compressedfhir.fhir.fhir_resource_list import FhirResourceList
 from compressedfhir.fhir.fhir_resource_map import FhirResourceMap
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode import (
     CompressedDictStorageMode,
+    CompressedDictStorageType,
 )
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 from compressedfhir.utilities.json_serializers.type_preservation_serializer import (
@@ -113,13 +114,15 @@ def test_writer_round_trip_matches_stdlib_writer(payload: Dict[str, Any]) -> Non
 @pytest.mark.parametrize(
     "obj", [_Custom(), _Data()], ids=["custom-object", "dataclass"]
 )
-def test_writer_rebuilds_custom_objects_like_the_stdlib_writer(obj: Any) -> None:
+def test_writer_stores_custom_objects_like_the_stdlib_writer(obj: Any) -> None:
+    """Both writers store the class name and attributes; neither read rebuilds the class."""
     for result in (
         _roundtrip_with_writer({"o": obj}),
         _roundtrip_with_stdlib({"o": obj}),
     ):
-        assert type(result["o"]) is type(obj)
-        assert vars(result["o"]) == vars(obj)
+        assert not isinstance(result["o"], type(obj))
+        assert result["o"]["__type__"] == type(obj).__name__
+        assert dict(result["o"]["attributes"]) == vars(obj)
 
 
 @pytest.mark.parametrize(
@@ -400,3 +403,54 @@ def test_convert_dict_documented_differences(
 def test_convert_dict_big_ints_fall_back_and_stay_exact() -> None:
     text = FhirClientJsonHelpers.convert_dict_to_fhir_json({"v": 2**100})
     assert json.loads(text)["v"] == 2**100
+
+
+# ---- reading data never imports a module or instantiates a class named in it ----
+
+
+@pytest.mark.parametrize("storage_type", ["compressed", "raw"])
+@pytest.mark.parametrize(
+    "marker",
+    [
+        {
+            "__type__": "Victim",
+            "__module__": "reader_probe_module",
+            "attributes": {"a": 1},
+        },
+        {"__type__": "path", "__module__": "os", "attributes": {"a": 1}},
+        {
+            "__type__": "X",
+            "__module__": "no_such_module_for_reader_probe",
+            "attributes": {"a": 1},
+        },
+    ],
+    ids=["importable-class", "not-a-class", "unknown-module"],
+)
+def test_reading_a_resource_never_imports_or_instantiates_named_classes(
+    marker: Dict[str, Any],
+    storage_type: CompressedDictStorageType,
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    marker_file = tmp_path / "imported.txt"
+    (tmp_path / "reader_probe_module.py").write_text(
+        f"import pathlib\npathlib.Path({str(marker_file)!r}).write_text('imported')\n"
+        "class Victim:\n    pass\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "reader_probe_module", raising=False)
+    mode = CompressedDictStorageMode(storage_type=storage_type)
+    content = {"resourceType": "Observation", "id": "1", "extension": [dict(marker)]}
+
+    resource = FhirResource.from_dict(content, storage_mode=mode)
+    from_text = FhirResource.from_json(json.dumps(content))  # always compressed
+    for r in (resource, from_text):
+        assert r.raw_dict()["extension"][0] == marker
+        assert r.dict()["extension"][0] == marker
+        assert json.loads(r.json())["extension"][0] == marker
+        assert json.loads(r.json(byte_identical=True))["extension"][0] == marker
+
+    assert not marker_file.exists()
+    assert "reader_probe_module" not in sys.modules

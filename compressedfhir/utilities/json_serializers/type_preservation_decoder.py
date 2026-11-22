@@ -1,8 +1,6 @@
-import logging
 from collections import OrderedDict
 from datetime import datetime, date, time
 from decimal import Decimal
-from logging import Logger
 from typing import Any, Dict, Callable, Optional, Union, cast, List
 from zoneinfo import ZoneInfo
 
@@ -96,7 +94,6 @@ class TypePreservationDecoder:
         Returns:
             Reconstructed object or original dictionary
         """
-        logger: Logger = logging.getLogger(__name__)
 
         decoders = cls._build_decoders(custom_decoders)
 
@@ -110,28 +107,6 @@ class TypePreservationDecoder:
                     # Handle built-in type decoders
                     if type_name in decoders:
                         return decoders[type_name](value)
-
-                    # Handle custom object reconstruction
-                    if "__module__" in value and "attributes" in value:
-                        try:
-                            # Dynamically import the class
-                            module = __import__(
-                                value["__module__"], fromlist=[type_name]
-                            )
-                            cls_ = getattr(module, type_name)
-
-                            # Create instance and set attributes with recursive decoding
-                            obj = cls_.__new__(cls_)
-                            obj.__dict__.update(
-                                {
-                                    k: recursive_decode(v)
-                                    for k, v in value["attributes"].items()
-                                }
-                            )
-                            return obj
-                        except (ImportError, AttributeError) as e:
-                            logger.error(f"Could not reconstruct {type_name}: {e}")
-                            return value
 
                 # Recursively decode dictionary values
                 # Conditionally use OrderedDict or regular dict
@@ -168,7 +143,6 @@ class TypePreservationDecoder:
         Returns:
             Reconstructed object
         """
-        logger: Logger = logging.getLogger(__name__)
         decoders = cls._build_decoders(custom_decoders)
         dict_type = OrderedDict if use_ordered_dict else dict
 
@@ -184,18 +158,6 @@ class TypePreservationDecoder:
                     type_name = children[TYPE_MARKER_KEY]
                     if type_name in decoders:
                         return decoders[type_name](children)
-                    if "__module__" in children and "attributes" in children:
-                        try:
-                            module = __import__(
-                                children["__module__"], fromlist=[type_name]
-                            )
-                            cls_ = getattr(module, type_name)
-                            obj = cls_.__new__(cls_)
-                            obj.__dict__.update(children["attributes"])
-                            return obj
-                        except (ImportError, AttributeError) as e:
-                            logger.error(f"Could not reconstruct {type_name}: {e}")
-                            return children
                     return dict_type(children)
                 decoded: Dict[str, Any] = dict_type(value)
                 for k, v in value.items():
