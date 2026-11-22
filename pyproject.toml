@@ -7,7 +7,7 @@ name = "compressedfhir"
 dynamic = ["version"]
 description = "Stores FHIR JSON resources in compressed form in memory"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [{ name = "Imran Qureshi", email = "imran.qureshi@icanbwell.com" }]
 classifiers = [
     "Development Status :: 4 - Beta",
