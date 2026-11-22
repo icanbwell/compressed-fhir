@@ -7,8 +7,9 @@ format.  Every assertion was verified against the 3.0.6 release.  Intentional 4.
 differences (container types, key-order-insensitive nested equality, compact orjson text)
 are deliberately not asserted.
 
-Only public API that exists in 3.0.6 is used, with default arguments, except the two
-private (de)serialize helpers used to pin the persisted format.  All data is synthetic.
+Only public API that exists in 3.0.6 is used, with default arguments, except the private
+_deserialize_dict helper and _serialized_dict attribute used to pin the persisted format.
+All data is synthetic.
 """
 
 import base64
@@ -39,20 +40,23 @@ from compressedfhir.utilities.json_serializers.type_preservation_serializer impo
     TypePreservationSerializer,
 )
 
-STORAGE_TYPES: list[CompressedDictStorageType] = [
+STORAGE_TYPES: tuple[CompressedDictStorageType, ...] = (
     "raw",
     "compressed",
     "msgpack",
     "compressed_msgpack",
-]
+)
 
 # Raw storage hands out its live internal dict and never copies, so copy/aliasing behavior
 # is only a contract for the serialized storage types.
-SERIALIZED_STORAGE_TYPES: list[CompressedDictStorageType] = [
+SERIALIZED_STORAGE_TYPES: tuple[CompressedDictStorageType, ...] = (
     "compressed",
     "msgpack",
     "compressed_msgpack",
-]
+)
+
+# Storage types that can hold python-typed values (datetime, date, time, Decimal)
+TYPED_VALUE_STORAGE_TYPES: tuple[CompressedDictStorageType, ...] = ("raw", "compressed")
 
 # The msgpack storage types can only hold msgpack-native values (no datetime/date/time/
 # Decimal) and store floats as float32.
@@ -85,6 +89,9 @@ def structure(value: Any) -> Any:
     if isinstance(value, float):
         # repr keeps the sign of -0.0, which == would treat as 0.0
         return ("float", repr(value))
+    if isinstance(value, Decimal):
+        # str keeps the exponent, which == ignores (Decimal("1.50") == Decimal("1.5"))
+        return ("Decimal", str(value))
     return (type(value).__name__, value)
 
 
@@ -92,7 +99,7 @@ DIV_TEXT = '<div>"é" \\ ' + chr(0x2028) + "</div>"
 ODD_TEXT = "日本 é " + chr(0x2028) + " " + chr(0xA0)
 
 
-def _typed_patient() -> dict[str, Any]:
+def build_typed_patient() -> dict[str, Any]:
     """Synthetic resource with python types, non-alphabetical key order and tricky scalars."""
     return {
         "resourceType": "Patient",
@@ -117,8 +124,8 @@ def _typed_patient() -> dict[str, Any]:
     }
 
 
-# What dict()/json() give for _typed_patient(), as FHIR-friendly JSON values.
-_TYPED_EXPECTED_PATIENT: dict[str, Any] = {
+# What dict()/json() give for build_typed_patient(), as FHIR-friendly JSON values.
+TYPED_EXPECTED_PATIENT: dict[str, Any] = {
     "resourceType": "Patient",
     "id": "synthetic-1",
     "meta": {"versionId": "1", "lastUpdated": "2024-01-02T03:04:05+00:00"},
@@ -139,7 +146,7 @@ _TYPED_EXPECTED_PATIENT: dict[str, Any] = {
 
 
 def build_patient(storage_type: str = "compressed") -> dict[str, Any]:
-    patient = _typed_patient()
+    patient = build_typed_patient()
     if storage_type in MSGPACK_STORAGE_TYPES:
         for key in TYPED_ONLY_KEYS:
             del patient[key]
@@ -148,7 +155,7 @@ def build_patient(storage_type: str = "compressed") -> dict[str, Any]:
 
 
 def expected_patient(storage_type: str = "compressed") -> dict[str, Any]:
-    expected = copy.deepcopy(_TYPED_EXPECTED_PATIENT)
+    expected = copy.deepcopy(TYPED_EXPECTED_PATIENT)
     if storage_type in MSGPACK_STORAGE_TYPES:
         for key in TYPED_ONLY_KEYS:
             del expected[key]
@@ -221,7 +228,7 @@ def test_raw_dict_preserves_values_key_order_and_types(
     assert structure(result) == structure(build_patient(storage_type))
 
 
-@pytest.mark.parametrize("storage_type", ["raw", "compressed"])
+@pytest.mark.parametrize("storage_type", TYPED_VALUE_STORAGE_TYPES)
 def test_raw_dict_keeps_python_types(storage_type: CompressedDictStorageType) -> None:
     # Arrange / Act
     result = make_resource(storage_type).raw_dict()
@@ -306,6 +313,7 @@ def test_json_and_dict_scalar_round_trip(value: Any) -> None:
 
 def test_dict_and_json_stringify_non_string_keys() -> None:
     # Arrange
+    # intentional: the non-str keys are the input under test
     resource = make_dict({1: "a", 2: {3: "b"}}, "raw")  # type:ignore[dict-item]
 
     # Act / Assert
@@ -521,7 +529,7 @@ def test_deepcopy_is_independent_and_keeps_storage_mode(
     assert clone.get_storage_mode().storage_type == storage_type
 
 
-@pytest.mark.parametrize("storage_type", ["raw", "compressed"])
+@pytest.mark.parametrize("storage_type", TYPED_VALUE_STORAGE_TYPES)
 def test_deepcopy_keeps_python_types(storage_type: CompressedDictStorageType) -> None:
     # Arrange
     resource = make_resource(storage_type)
