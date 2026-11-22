@@ -27,8 +27,6 @@ Homepage = "https://github.com/icanbwell/compressed-fhir"
 
 [dependency-groups]
 dev = [
-    "setuptools>=64",
-    "wheel>=0.43.0",
     "twine>=4.0.2",
     "pre-commit>=3.6.1",
     "autoflake>=2.2.0",
