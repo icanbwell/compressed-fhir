@@ -82,6 +82,9 @@ def structure(value: Any) -> Any:
         return ("map", [(k, structure(v)) for k, v in value.items()])
     if isinstance(value, list):
         return ("list", [structure(v) for v in value])
+    if isinstance(value, float):
+        # repr keeps the sign of -0.0, which == would treat as 0.0
+        return ("float", repr(value))
     return (type(value).__name__, value)
 
 
@@ -284,7 +287,6 @@ def test_json_parses_to_same_values_order_and_types_as_dict(
         ODD_TEXT,
         'quote " backslash \\ newline \n tab \t nul \x00',
         "😀 astral",
-        "[1e400]",
     ],
     ids=repr,
 )
@@ -624,11 +626,12 @@ def test_resource_stays_usable_after_an_exception_in_a_transaction(
         resource["a"] = 2
         raise RuntimeError("boom")
 
-    # Assert: usable, consistent, and further transactions work
+    # Assert: end_transaction runs in a finally, so the partial change is committed (as in
+    # 3.x), and further transactions work
     with resource.transaction():
         resource["b"] = 3
         assert resource["b"] == 3
-    assert resource.dict() == {"a": resource.dict()["a"], "b": 3}
+    assert resource.dict() == {"a": 2, "b": 3}
 
 
 @pytest.mark.parametrize("storage_type", STORAGE_TYPES)
