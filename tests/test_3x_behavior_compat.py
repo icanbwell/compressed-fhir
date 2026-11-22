@@ -856,8 +856,11 @@ def test_compressed_storage_writes_the_3x_type_preserving_content() -> None:
     # Assert
     # Compared as parsed JSON, not as text: the text layout (whitespace, \\uXXXX escapes
     # versus raw UTF-8) is a writer detail that may change without changing what 3.x readers see.
-    assert json.loads(stored_text) == json.loads(GOLDEN_COMPRESSED_JSON_TEXT)
-    assert json.loads(golden_text) == json.loads(stored_text)
+    # structure() keeps leaf types and key order, so 1 / 1.0 / True and reordered keys still fail.
+    assert structure(json.loads(stored_text)) == structure(
+        json.loads(GOLDEN_COMPRESSED_JSON_TEXT)
+    )
+    assert structure(json.loads(golden_text)) == structure(json.loads(stored_text))
 
 
 def test_msgpack_storage_writes_the_3x_bytes() -> None:
