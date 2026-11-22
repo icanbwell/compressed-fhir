@@ -508,3 +508,21 @@ def test_dataclass_in_a_resource_goes_through_asdict() -> None:
     expected = {"name": "a", "_hidden": 3}
     assert resource.dict()["p"] == expected
     assert json.loads(resource.json())["p"] == expected
+
+
+def test_exact_dict_works_when_a_subclass_overrides_json_without_keywords() -> None:
+    from compressedfhir.utilities.compressed_dict.v1.compressed_dict import (
+        CompressedDict,
+    )
+
+    class LegacyJson(CompressedDict[str, Any]):
+        def json(self) -> str:  # type: ignore[override]
+            return '{"over": 1}'
+
+    d = LegacyJson(
+        initial_dict={"a": 1},
+        storage_mode=CompressedDictStorageMode(storage_type="raw"),
+        properties_to_cache=[],
+    )
+
+    assert d._dict_exact() == {"a": 1}
