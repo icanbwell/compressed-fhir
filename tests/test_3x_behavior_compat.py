@@ -60,9 +60,12 @@ TYPED_VALUE_STORAGE_TYPES: tuple[CompressedDictStorageType, ...] = ("raw", "comp
 
 # The msgpack storage types can only hold msgpack-native values (no datetime/date/time/
 # Decimal) and store floats as float32.
-MSGPACK_STORAGE_TYPES = ("msgpack", "compressed_msgpack")
+MSGPACK_STORAGE_TYPES: tuple[CompressedDictStorageType, ...] = (
+    "msgpack",
+    "compressed_msgpack",
+)
 
-TYPED_ONLY_KEYS = (
+TYPED_ONLY_KEYS: tuple[str, ...] = (
     "x_date",
     "x_time",
     "x_decimal_fraction",
