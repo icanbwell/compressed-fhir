@@ -12,7 +12,6 @@ Compressed FHIR is a specialized library that provides efficient memory storage 
 - Fast access to compressed FHIR data
 - Compatible with standard FHIR JSON formats
 - Minimal memory footprint
-- Python 3.12+ support
 
 ## Installation
 
@@ -30,9 +29,7 @@ uv add compressedfhir
 
 ## Requirements
 
-- Python 3.12 or higher
-- msgpack >= 1.0.0
-- orjson >= 3.11.6
+See [pyproject.toml](pyproject.toml) for the supported Python versions and dependencies.
 
 ## Usage
 
