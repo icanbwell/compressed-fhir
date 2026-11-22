@@ -5,6 +5,7 @@ services:
     build:
       dockerfile: Dockerfile
       context: .
+      target: development
     volumes:
       - ./:/usr/src/compressedfhir
     container_name: compressedfhir_dev
