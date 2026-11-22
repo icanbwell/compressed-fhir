@@ -1,7 +1,6 @@
 import json
-from collections import OrderedDict
 from datetime import datetime, date
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any
 
 import pytest
 
@@ -36,34 +35,6 @@ class TestFhirClientJsonHelpers:
         ]
         expected_list: List[Dict[str, Any]] = [{"a": 1}, {"d": "test"}]
         assert FhirClientJsonHelpers.remove_empty_elements(input_list) == expected_list
-
-    def test_remove_empty_elements_from_ordered_dict(self) -> None:
-        from collections import OrderedDict
-
-        # Test OrderedDict removal
-        input_dict = OrderedDict(
-            [("a", 1), ("b", ""), ("c", None), ("d", []), ("e", {}), ("f", [1, 2, 3])]
-        )
-        expected_dict = OrderedDict([("a", 1), ("f", [1, 2, 3])])
-        result: List[OrderedDict[str, Any]] | OrderedDict[str, Any] = (
-            FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(input_dict)
-        )
-        assert result == expected_dict
-
-        # Test list of OrderedDicts
-        input_list: List[OrderedDict[str, Any]] = [
-            OrderedDict([("a", 1), ("b", None)]),
-            OrderedDict([("c", []), ("d", "test")]),
-            OrderedDict([("e", {})]),
-        ]
-        expected_list: List[OrderedDict[str, Any]] = [
-            OrderedDict([("a", 1)]),
-            OrderedDict([("d", "test")]),
-        ]
-        result = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
-            input_list
-        )
-        assert result == expected_list
 
     def test_convert_dict_to_fhir_json(self) -> None:
         input_dict = {"name": "John Doe", "age": 30, "address": None, "hobbies": []}
@@ -107,15 +78,15 @@ class TestFhirClientJsonHelpers:
     [
         (
             {"a": 0, "b": False, "c": 0.0},
-            OrderedDict([("a", 0), ("b", False), ("c", 0.0)]),
+            {"a": 0, "b": False, "c": 0.0},
         ),
-        ({"a": "  ", "b": "\n", "c": " x "}, OrderedDict([("c", " x ")])),
-        ({"a": {"b": {"c": None}}, "d": [[], {}, None, ""]}, OrderedDict()),
+        ({"a": "  ", "b": "\n", "c": " x "}, {"c": " x "}),
+        ({"a": {"b": {"c": None}}, "d": [[], {}, None, ""]}, {}),
         (
             {"a": [{"b": None}, {"c": 1}]},
-            OrderedDict([("a", [OrderedDict([("c", 1)])])]),
+            {"a": [{"c": 1}]},
         ),
-        ([{"a": None}, {"b": [None, 2]}], [OrderedDict([("b", [2])])]),
+        ([{"a": None}, {"b": [None, 2]}], [{"b": [2]}]),
         ("text", "text"),
         (5, 5),
         ((), ()),
@@ -131,30 +102,23 @@ class TestFhirClientJsonHelpers:
         "tuple-passthrough",
     ],
 )
-def test_remove_empty_elements_from_ordered_dict_cases(
-    value: Any, expected: Any
-) -> None:
+def test_remove_empty_elements_cases(value: Any, expected: Any) -> None:
     # Act
-    result = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(value)
+    result = FhirClientJsonHelpers.remove_empty_elements(value)
 
     # Assert
     assert result == expected
 
 
-def test_remove_empty_elements_from_ordered_dict_keeps_order_and_returns_ordered_dicts() -> (
-    None
-):
+def test_remove_empty_elements_keeps_key_order_and_returns_plain_dicts() -> None:
     # Arrange
     value = {"z": 1, "y": {"b": 2, "a": None, "c": 3}, "x": [{"k": "v"}]}
 
     # Act
-    result = FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(
-        cast(OrderedDict[str, Any], value)
-    )
+    result = FhirClientJsonHelpers.remove_empty_elements(value)
 
     # Assert
-    assert isinstance(result, OrderedDict)
     assert list(result.keys()) == ["z", "y", "x"]
-    assert type(result["y"]) is OrderedDict
+    assert type(result["y"]) is dict
     assert list(result["y"].keys()) == ["b", "c"]
-    assert type(result["x"][0]) is OrderedDict
+    assert type(result["x"][0]) is dict

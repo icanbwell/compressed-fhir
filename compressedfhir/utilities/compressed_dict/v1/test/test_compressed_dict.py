@@ -1,3 +1,6 @@
+from collections import OrderedDict
+import zlib
+import msgpack
 from datetime import datetime
 
 import pytest
@@ -26,7 +29,7 @@ class TestCompressedDict:
         assert cd._storage_mode.storage_type == "raw"
 
     def test_init_with_dict(self) -> None:
-        """Test initialization with initial dictionary"""
+        """Test initialization with an initial dictionary"""
         initial_data = {"a": 1, "b": 2, "c": 3}
         cd = CompressedDict(
             initial_dict=initial_data,
@@ -465,3 +468,130 @@ def test_nested_dict_with_datetime() -> None:
 
     assert plain_dict["period"]["start"] == nested_dict["period"]["start"]  # type: ignore[index]
     assert plain_dict == nested_dict
+
+
+def test_accepts_ordered_dict_input() -> None:
+    """Test that CompressedDict accepts OrderedDict as input for backward compatibility."""
+    from collections import OrderedDict
+
+    ordered_data: OrderedDict[str, Any] = OrderedDict()
+    ordered_data["z"] = 1
+    ordered_data["a"] = 2
+    ordered_data["m"] = 3
+
+    cd = CompressedDict(
+        initial_dict=ordered_data,
+        storage_mode=CompressedDictStorageMode(storage_type="raw"),
+        properties_to_cache=[],
+    )
+
+    with cd.transaction():
+        assert cd["z"] == 1
+        assert cd["a"] == 2
+        assert cd["m"] == 3
+        # Order should be preserved
+        assert list(cd.keys()) == ["z", "a", "m"]
+
+
+def test_dict_returns_regular_dict() -> None:
+    """Test that dict() returns a regular dict (not OrderedDict) but preserves order."""
+    from collections import OrderedDict
+
+    initial_data = {"z": 1, "a": 2, "m": 3}
+    cd = CompressedDict(
+        initial_dict=initial_data,
+        storage_mode=CompressedDictStorageMode(storage_type="raw"),
+        properties_to_cache=[],
+    )
+
+    result = cd.dict()
+
+    # Should be a dict, not OrderedDict
+    assert type(result) is dict
+    assert not isinstance(result, OrderedDict)
+    # Order should be preserved
+    assert list(result.keys()) == ["z", "a", "m"]
+
+
+def test_raw_dict_returns_regular_dict() -> None:
+    """Test that raw_dict() returns a regular dict."""
+    from collections import OrderedDict
+
+    initial_data = {"x": 1, "y": 2}
+    cd = CompressedDict(
+        initial_dict=initial_data,
+        storage_mode=CompressedDictStorageMode(storage_type="compressed"),
+        properties_to_cache=[],
+    )
+
+    result = cd.raw_dict()
+
+    # Should be a dict, not OrderedDict
+    assert type(result) is dict
+    assert not isinstance(result, OrderedDict)
+    assert result == {"x": 1, "y": 2}
+
+
+@pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
+@pytest.mark.parametrize(
+    "source_type", [dict, OrderedDict], ids=["dict", "OrderedDict"]
+)
+def test_replace_top_level_mutation_does_not_affect_compressed_dict(
+    storage_type: Any, source_type: Any
+) -> None:
+    """Mutating the dict passed in must not change the CompressedDict."""
+    # Arrange
+    source: dict[str, Any] = source_type([("a", 1), ("b", 2)])
+    cd = CompressedDict(
+        initial_dict=source,
+        storage_mode=CompressedDictStorageMode(storage_type=storage_type),
+        properties_to_cache=[],
+    )
+
+    # Act
+    source["c"] = 3
+    source.pop("a")
+
+    # Assert
+    assert len(cd) == 2
+    assert cd.dict() == {"a": 1, "b": 2}
+
+
+@pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
+def test_to_plain_dict_returns_detached_copy(storage_type: Any) -> None:
+    # Arrange
+    cd = CompressedDict(
+        initial_dict={"a": {"b": 1}},
+        storage_mode=CompressedDictStorageMode(storage_type=storage_type),
+        properties_to_cache=[],
+    )
+
+    # Act
+    plain: dict[str, Any] = cd.to_plain_dict()
+    plain["a"]["b"] = 2
+    plain["x"] = 9
+
+    # Assert
+    assert cd.dict() == {"a": {"b": 1}}
+    assert len(cd) == 1
+
+
+@pytest.mark.parametrize("storage_type", ["msgpack", "compressed"])
+def test_deserialize_dict_rejects_non_mapping_payload(storage_type: Any) -> None:
+    # Arrange
+    if storage_type == "msgpack":
+        payload = msgpack.packb([1, 2])
+    else:
+        payload = zlib.compress(b"[1, 2]")
+
+    # Act / Assert
+    with pytest.raises(TypeError):
+        CompressedDict._deserialize_dict(
+            serialized_dict_bytes=payload, storage_type=storage_type
+        )
+
+
+@pytest.mark.parametrize("payload", ["[1, 2]", '[["a", 1]]', '"x"'])
+def test_from_json_rejects_non_object_payload(payload: str) -> None:
+    with pytest.raises(TypeError):
+        CompressedDict.from_json(payload)

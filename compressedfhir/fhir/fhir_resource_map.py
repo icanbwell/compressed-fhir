@@ -8,7 +8,6 @@ from typing import (
     Generator,
     List,
     Tuple,
-    OrderedDict,
 )
 
 from compressedfhir.fhir.fhir_resource_list import FhirResourceList
@@ -36,12 +35,12 @@ class FhirResourceMap:
         """
         self._resource_map: Dict[str, FhirResourceList] = initial_dict or {}
 
-    def dict(self) -> OrderedDict[str, Any]:
+    def dict(self) -> Dict[str, Any]:
         """
         Convert the FhirResourceMap to a dictionary representation.
 
         """
-        result: OrderedDict[str, Any] = OrderedDict[str, Any]()
+        result: Dict[str, Any] = {}
         for key, value in self._resource_map.items():
             result[key] = [resource.dict() for resource in value]
         return result

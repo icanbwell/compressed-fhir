@@ -35,6 +35,7 @@ class TypePreservationSerializer:
         cls,
         json_str: str,
         custom_decoders: Dict[str, Callable[[Any], Any]] | None = None,
+        use_ordered_dict: bool = True,
         **kwargs: Any,
     ) -> Any:
         """
@@ -43,6 +44,7 @@ class TypePreservationSerializer:
         Args:
             json_str: JSON string to deserialize
             custom_decoders: Optional additional custom decoders
+            use_ordered_dict: Whether to use OrderedDict for deserialized dicts
             kwargs: Additional JSON loads arguments
 
         Returns:
@@ -51,7 +53,7 @@ class TypePreservationSerializer:
         return json.loads(
             json_str,
             object_hook=lambda dct: TypePreservationDecoder.decode(
-                dct, custom_decoders
+                dct, custom_decoders, use_ordered_dict=use_ordered_dict
             ),
             **kwargs,
         )

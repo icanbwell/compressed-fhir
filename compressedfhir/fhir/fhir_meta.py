@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Any, Dict, OrderedDict
+from typing import Any, Dict
 
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
@@ -17,8 +17,8 @@ class FhirMeta:
     security: list[Dict[str, Any]] | None = None
     tag: list[str] | None = None
 
-    def dict(self) -> OrderedDict[str, Any]:
-        result: OrderedDict[str, Any] = OrderedDict[str, Any]()
+    def dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
         if self.version_id is not None:
             result["versionId"] = self.version_id
         if self.last_updated is not None:
@@ -33,7 +33,7 @@ class FhirMeta:
             ]
         if self.tag is not None:
             result["tag"] = [t for t in self.tag if t]
-        return FhirClientJsonHelpers.remove_empty_elements_from_ordered_dict(result)
+        return FhirClientJsonHelpers.remove_empty_elements(result)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FhirMeta":

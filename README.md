@@ -38,7 +38,6 @@ uv add compressedfhir
 
 ```python
 from typing import Any
-from collections import OrderedDict
 
 from compressedfhir.fhir.fhir_resource import FhirResource
 from compressedfhir.utilities.compressed_dict.v1.compressed_dict_storage_mode import CompressedDictStorageMode
@@ -49,7 +48,7 @@ resource1 = FhirResource(
     storage_mode=CompressedDictStorageMode.default(),
 )
 
-my_dict: OrderedDict[str,Any] = resource1.dict()
+my_dict: dict[str, Any] = resource1.dict()
 my_plain_dict: dict[str, Any] = resource1.to_plain_dict()
 my_json: str = resource1.json()
 
