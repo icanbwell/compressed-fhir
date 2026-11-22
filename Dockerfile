@@ -1,3 +1,6 @@
+# uv binary, pinned once and copied into the stages that need it
+FROM ghcr.io/astral-sh/uv:0.11.6@sha256:b1e699368d24c57cda93c338a57a8c5a119009ba809305cc8e86986d4a006754 AS uv
+
 # Stage 1: Base image to install common dependencies and lock Python dependencies
 # This stage is responsible for setting up the environment and installing Python packages using uv.
 FROM public.ecr.aws/docker/library/python:3.12-alpine3.20 AS python_packages
@@ -12,7 +15,7 @@ ARG RUN_UV_LOCK=false
 RUN apk add --no-cache git
 
 # Install uv, a tool for managing Python project dependencies
-COPY --from=ghcr.io/astral-sh/uv:0.11.6@sha256:b1e699368d24c57cda93c338a57a8c5a119009ba809305cc8e86986d4a006754 /uv /uvx /usr/local/bin/
+COPY --from=uv /uv /uvx /usr/local/bin/
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
@@ -29,8 +32,8 @@ COPY pyproject.toml uv.lock* README.md VERSION /usr/src/compressedfhir/
 # Conditionally run uv lock to update uv.lock based on the argument provided
 RUN if [ "$RUN_UV_LOCK" = "true" ]; then echo "Locking dependencies" && rm -f uv.lock && uv lock --verbose; fi
 
-# Install production dependencies using the locked versions in uv.lock
-RUN uv sync --frozen --no-install-project --verbose
+# Install production dependencies (no dev group) using the locked versions in uv.lock
+RUN uv sync --frozen --no-dev --no-install-project --verbose
 RUN cp -f uv.lock /tmp/uv.lock
 
 # Stage 1b: development dependencies (extends production)
@@ -46,9 +49,6 @@ ENV COLUMNS=300
 
 # Install common tools and dependencies (git is required for some Python packages)
 RUN apk add --no-cache git
-
-# uv is needed at runtime for `uv build`
-COPY --from=ghcr.io/astral-sh/uv:0.11.6@sha256:b1e699368d24c57cda93c338a57a8c5a119009ba809305cc8e86986d4a006754 /uv /uvx /usr/local/bin/
 
 # Set environment variables for project configuration
 ENV PROJECT_DIR=/usr/src/compressedfhir
@@ -90,10 +90,12 @@ RUN chown -R appuser:appgroup ${PROJECT_DIR} /opt/venv ${PROMETHEUS_MULTIPROC_DI
 # Switch to the restricted user to enhance security
 USER appuser
 
-# Stage 3: development runtime (extends production with dev dependencies)
+# Stage 3: development runtime (extends production with the dev venv and uv)
 # Tests are provided by the docker-compose volume mount of the source tree.
+# uv is needed here for `uv build` (see Makefile and python-publish.yml).
 FROM production AS development
 USER root
+COPY --from=uv /uv /uvx /usr/local/bin/
 COPY --from=python_packages_dev /opt/venv /opt/venv
 RUN chown -R appuser:appgroup /opt/venv
 USER appuser
