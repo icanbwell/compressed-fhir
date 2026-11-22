@@ -1,6 +1,6 @@
 # Use orjson for stored, parsed and written JSON, with compact text by default (5.0.0)
 
-* Status: proposed
+* Status: accepted
 * Deciders: Imran Qureshi
 * Date: 2026-11-21
 * Jira: BAI-1955
