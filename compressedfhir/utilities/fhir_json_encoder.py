@@ -93,7 +93,7 @@ def dumps_orjson(obj: Any) -> str:
             obj,
             default=FHIR_JSON_ENCODER.default,
             # route datetime/date/time through FhirJSONEncoder for identical values
-            option=orjson.OPT_PASSTHROUGH_DATETIME,
+            option=orjson.OPT_PASSTHROUGH_DATETIME | orjson.OPT_PASSTHROUGH_DATACLASS,
         ).decode()
     except TypeError as e:  # orjson.JSONEncodeError subclasses TypeError
         logger.debug("dumps_orjson fell back to the standard library: %s", e)

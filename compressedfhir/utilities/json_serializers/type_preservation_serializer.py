@@ -15,11 +15,11 @@ from compressedfhir.utilities.json_serializers.type_preservation_encoder import 
 
 logger = logging.getLogger(__name__)
 
-# An integer beyond 64 bits needs this many digits.  orjson silently turns those into floats
-# (stdlib json keeps the int), so such payloads take the stdlib path.  Long digit runs that
-# are not ints (e.g. float fractions) only cost the fallback, never correctness.
-_DIGITS_IN_INTEGER_BEYOND_64_BITS = 20
-_LONG_DIGIT_RUN = re.compile(r"\d{%d}" % _DIGITS_IN_INTEGER_BEYOND_64_BITS)
+# orjson silently turns an integer outside [-2**63, 2**64-1] into a float (stdlib json keeps
+# the int), so such payloads take the stdlib path.  Those integers have 20 or more digits, or
+# are negative with 19 digits (-2**63 - 1 and below).  Long digit runs that are not ints (e.g.
+# float fractions) and in-range 19-digit negatives only cost the fallback, never correctness.
+_LONG_DIGIT_RUN = re.compile(r"\d{20}|-\d{19}")
 
 # Stored blobs written by the orjson writer start with this one byte.  JSON parsers ignore
 # leading whitespace, so older versions still read such blobs.  It records that the text came

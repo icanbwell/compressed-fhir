@@ -454,3 +454,57 @@ def test_reading_a_resource_never_imports_or_instantiates_named_classes(
 
     assert not marker_file.exists()
     assert "reader_probe_module" not in sys.modules
+
+
+@pytest.mark.parametrize(
+    "value", [-(2**63) - 1, -(2**63), -(10**19) + 1, 2**64, -(2**100)]
+)
+def test_integers_at_the_64_bit_boundary_read_back_exact_from_stdlib_text(
+    value: int,
+) -> None:
+    resource = FhirResource.from_json(json.dumps({"resourceType": "Basic", "n": value}))
+
+    assert resource.raw_dict()["n"] == value
+    assert isinstance(resource.raw_dict()["n"], int)
+    assert resource.dict()["n"] == value
+
+
+@pytest.mark.parametrize("storage_type", ["raw", "compressed"])
+def test_entry_and_bundle_drop_empties_created_by_encoding(
+    storage_type: CompressedDictStorageType,
+) -> None:
+    from compressedfhir.fhir.fhir_bundle_entry import FhirBundleEntry
+
+    mode = CompressedDictStorageMode(storage_type=storage_type)
+    content: Dict[str, Any] = {
+        "resourceType": "Basic",
+        "id": "1",
+        "s": {"k": {1}},
+        "b": {"k": [{"z": set()}]},
+        "e": {"q": b""},
+        "f": [set()],
+    }
+    expected = {"resourceType": "Basic", "id": "1", "s": {"k": [1]}}
+    entry = FhirBundleEntry(
+        resource=FhirResource(initial_dict=content, storage_mode=mode)
+    )
+
+    assert entry.dict() == {"resource": expected}
+    assert json.loads(entry.json())["resource"] == expected
+    assert json.loads(entry.json(byte_identical=True))["resource"] == expected
+
+
+def test_dataclass_in_a_resource_goes_through_asdict() -> None:
+    @dataclasses.dataclass
+    class Part:
+        name: str
+        _hidden: int = 3
+
+    resource = FhirResource(
+        initial_dict={"resourceType": "Basic", "id": "1", "p": Part(name="a")},
+        storage_mode=CompressedDictStorageMode(storage_type="raw"),
+    )
+
+    expected = {"name": "a", "_hidden": 3}
+    assert resource.dict()["p"] == expected
+    assert json.loads(resource.json())["p"] == expected

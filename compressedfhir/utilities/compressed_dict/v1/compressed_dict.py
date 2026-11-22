@@ -471,29 +471,40 @@ class CompressedDict[K, V](MutableMapping[K, V]):
             return cast(Dict[K, V], fast)
         source = self._json_source(drop_non_finite=True)
         try:
-            return cast(
-                Dict[K, V],
-                orjson.loads(
-                    orjson.dumps(
-                        source,
-                        default=FHIR_JSON_ENCODER.default,
-                        # route datetime/date/time through FhirJSONEncoder for identical output
-                        option=orjson.OPT_PASSTHROUGH_DATETIME,
-                    )
-                ),
+            encoded = orjson.loads(
+                orjson.dumps(
+                    source,
+                    default=FHIR_JSON_ENCODER.default,
+                    # route datetime/date/time through FhirJSONEncoder for identical output
+                    option=orjson.OPT_PASSTHROUGH_DATETIME
+                    | orjson.OPT_PASSTHROUGH_DATACLASS,
+                )
             )
         except TypeError as e:  # orjson.JSONEncodeError subclasses TypeError
             logger.debug("dict() fell back to the standard library: %s", e)
-            return cast(
-                Dict[K, V], json.loads(json.dumps(obj=source, cls=FhirJSONEncoder))
+            encoded = json.loads(json.dumps(obj=source, cls=FhirJSONEncoder))
+        return self._prune_encoded(encoded, drop_non_finite=True)
+
+    def _prune_encoded(self, encoded: Any, *, drop_non_finite: bool) -> Dict[K, V]:
+        """
+        Encoding can create new empty elements (set() becomes [], b"" becomes ""), which were
+        not empty when _json_source pruned the python values, so prune the encoded data again.
+        """
+        if self._PRUNE_EMPTY_ON_JSON:
+            encoded = FhirClientJsonHelpers.remove_empty_elements(
+                encoded, drop_non_finite=drop_non_finite
             )
+        return cast(Dict[K, V], encoded)
 
     def _dict_exact(self) -> Dict[K, V]:
         """
         Like dict(), but built with the standard library so NaN/Infinity survive.  The exact
         (byte_identical=True) text of bundles and maps is written from these.
         """
-        return cast(Dict[K, V], json.loads(self.json(byte_identical=True)))
+        return self._prune_encoded(
+            json.loads(json.dumps(self._json_source(), cls=FhirJSONEncoder)),
+            drop_non_finite=False,
+        )
 
     def _plain_dict_from_stored_json(self) -> Optional[Dict[str, Any]]:
         """
