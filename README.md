@@ -22,17 +22,17 @@ You can install the package using pip:
 pip install compressedfhir
 ```
 
-Or using pipenv:
+Or using uv:
 
 ```bash
-pipenv install compressedfhir
+uv add compressedfhir
 ```
 
 ## Requirements
 
 - Python 3.10 or higher
 - msgpack >= 1.0.0
-- orjson >= 3.10.16
+- orjson >= 3.11.6
 
 ## Usage
 
@@ -67,9 +67,9 @@ with resource1.transaction():
    cd compressed-fhir
    ```
 
-2. Install dependencies using pipenv:
+2. Install dependencies using [uv](https://docs.astral.sh/uv/):
    ```bash
-   pipenv install --dev
+   uv sync --group dev
    ```
 
 3. Set up pre-commit hooks:
