@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import zlib
 import msgpack
 from datetime import datetime
@@ -532,12 +533,15 @@ def test_raw_dict_returns_regular_dict() -> None:
 
 
 @pytest.mark.parametrize("storage_type", ["raw", "msgpack", "compressed"])
+@pytest.mark.parametrize(
+    "source_type", [dict, OrderedDict], ids=["dict", "OrderedDict"]
+)
 def test_replace_top_level_mutation_does_not_affect_compressed_dict(
-    storage_type: Any,
+    storage_type: Any, source_type: Any
 ) -> None:
     """Mutating the dict passed in must not change the CompressedDict."""
     # Arrange
-    source: dict[str, Any] = {"a": 1, "b": 2}
+    source: dict[str, Any] = source_type([("a", 1), ("b", 2)])
     cd = CompressedDict(
         initial_dict=source,
         storage_mode=CompressedDictStorageMode(storage_type=storage_type),
@@ -585,3 +589,9 @@ def test_deserialize_dict_rejects_non_mapping_payload(storage_type: Any) -> None
         CompressedDict._deserialize_dict(
             serialized_dict_bytes=payload, storage_type=storage_type
         )
+
+
+@pytest.mark.parametrize("payload", ["[1, 2]", '[["a", 1]]', '"x"'])
+def test_from_json_rejects_non_object_payload(payload: str) -> None:
+    with pytest.raises(TypeError):
+        CompressedDict.from_json(payload)

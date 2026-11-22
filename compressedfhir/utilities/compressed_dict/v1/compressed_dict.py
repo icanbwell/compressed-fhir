@@ -653,6 +653,8 @@ class CompressedDict[K, V](MutableMapping[K, V]):
         :return: A FhirResource object.
         """
         data = TypePreservationSerializer.deserialize(json_str, use_ordered_dict=False)
+        if not isinstance(data, dict):
+            raise TypeError(f"Expected a dict payload, got {type(data).__name__}")
         return cls.from_dict(data)
 
     @classmethod
