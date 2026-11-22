@@ -2,6 +2,8 @@ import json
 from datetime import datetime, date
 from typing import List, Dict, Any
 
+import pytest
+
 from compressedfhir.utilities.json_helpers import FhirClientJsonHelpers
 
 
@@ -69,3 +71,54 @@ class TestFhirClientJsonHelpers:
         invalid_json = "{invalid json}"
         result = FhirClientJsonHelpers.orjson_loads(invalid_json)
         assert result is None
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (
+            {"a": 0, "b": False, "c": 0.0},
+            {"a": 0, "b": False, "c": 0.0},
+        ),
+        ({"a": "  ", "b": "\n", "c": " x "}, {"c": " x "}),
+        ({"a": {"b": {"c": None}}, "d": [[], {}, None, ""]}, {}),
+        (
+            {"a": [{"b": None}, {"c": 1}]},
+            {"a": [{"c": 1}]},
+        ),
+        ([{"a": None}, {"b": [None, 2]}], [{"b": [2]}]),
+        ("text", "text"),
+        (5, 5),
+        ((), ()),
+    ],
+    ids=[
+        "falsy-scalars-kept",
+        "blank-strings-removed",
+        "nested-empties-collapse",
+        "list-of-dicts",
+        "top-level-list",
+        "string-passthrough",
+        "number-passthrough",
+        "tuple-passthrough",
+    ],
+)
+def test_remove_empty_elements_cases(value: Any, expected: Any) -> None:
+    # Act
+    result = FhirClientJsonHelpers.remove_empty_elements(value)
+
+    # Assert
+    assert result == expected
+
+
+def test_remove_empty_elements_keeps_key_order_and_returns_plain_dicts() -> None:
+    # Arrange
+    value = {"z": 1, "y": {"b": 2, "a": None, "c": 3}, "x": [{"k": "v"}]}
+
+    # Act
+    result = FhirClientJsonHelpers.remove_empty_elements(value)
+
+    # Assert
+    assert list(result.keys()) == ["z", "y", "x"]
+    assert type(result["y"]) is dict
+    assert list(result["y"].keys()) == ["b", "c"]
+    assert type(result["x"][0]) is dict

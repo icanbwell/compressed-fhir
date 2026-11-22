@@ -1,9 +1,12 @@
 import json
+from typing import Any, Dict, List
 from unittest.mock import Mock
 
 import pytest
 
+from compressedfhir.fhir.fhir_resource import FhirResource
 from compressedfhir.fhir.fhir_resource_list import FhirResourceList
+from compressedfhir.utilities.fhir_json_encoder import FhirJSONEncoder
 
 
 class TestFhirResourceList:
@@ -78,30 +81,65 @@ class TestFhirResourceList:
         assert len(set(r.resource_type_and_id for r in resource_list)) == 3
 
     def test_to_json(self) -> None:
-        # Create mock FhirResource objects
-        mock_resources = [
-            Mock(
-                resource_type="Patient",
-                id="123",
-                dict=lambda: {"id": "123", "resourceType": "Patient"},
-            ),
-            Mock(
-                resource_type="Observation",
-                id="456",
-                dict=lambda: {"id": "456", "resourceType": "Observation"},
-            ),
-        ]
+        # Arrange
+        resource_list = FhirResourceList(
+            [
+                FhirResource.from_dict({"id": "123", "resourceType": "Patient"}),
+                FhirResource.from_dict(
+                    {"id": "456", "resourceType": "Observation", "note": []}
+                ),
+            ]
+        )
 
-        resource_list = FhirResourceList(mock_resources)
-
-        # Convert to JSON
+        # Act
         json_str = resource_list.json()
 
-        # Parse and check the JSON
-        parsed_json = json.loads(json_str)
-        assert len(parsed_json) == 2
-        assert parsed_json[0]["resourceType"] == "Patient"
-        assert parsed_json[1]["resourceType"] == "Observation"
+        # Assert
+        assert json_str == (
+            '[{"id": "123", "resourceType": "Patient"},'
+            ' {"id": "456", "resourceType": "Observation"}]'
+        )
+        assert json.loads(json_str)[1]["resourceType"] == "Observation"
+
+    @pytest.mark.parametrize(
+        "resources",
+        [
+            [],
+            [{"resourceType": "Patient", "id": "p1", "name": [{"given": ["Ann"]}]}],
+            [
+                {
+                    "resourceType": "Observation",
+                    "id": "o1",
+                    "valueQuantity": {"value": 1.10},
+                },
+                {
+                    "resourceType": "Observation",
+                    "id": "o2",
+                    "code": {"text": "Glucosé — 血糖"},
+                },
+                {
+                    "resourceType": "Observation",
+                    "id": "o3",
+                    "extension": [],
+                    "status": "",
+                },
+            ],
+        ],
+        ids=["empty", "single", "floats-non-ascii-and-empties"],
+    )
+    def test_to_json_matches_serializing_each_resource_dict(
+        self, resources: List[Dict[str, Any]]
+    ) -> None:
+        # Arrange
+        resource_list = FhirResourceList([FhirResource.from_dict(r) for r in resources])
+
+        # Act
+        json_str = resource_list.json()
+
+        # Assert: identical to the previous json.dumps([r.dict() for r in self]) output
+        assert json_str == json.dumps(
+            [r.dict() for r in resource_list], cls=FhirJSONEncoder
+        )
 
     @pytest.mark.asyncio
     async def test_consume_resource_async_default(self) -> None:

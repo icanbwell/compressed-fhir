@@ -1,8 +1,36 @@
 import json
-from typing import Any, Dict, List, Union, Optional, overload
+from typing import Any, Dict, List, Union, Optional, cast, overload
 from datetime import datetime, date
 
 import orjson
+
+
+def _is_empty(x: Any) -> bool:
+    """True for None, an empty list, an empty dict, or a blank string."""
+    if x is None:
+        return True
+    if isinstance(x, str):
+        return x.strip() == ""
+    if isinstance(x, (list, dict)):
+        return len(x) == 0
+    return bool(x == [] or x == {})
+
+
+def _remove_empty_elements(d: Any) -> Any:
+    # Called for every value in a resource, so it checks against the builtin dict/list.
+    # isinstance against typing.Dict goes through typing's slow __instancecheck__
+    # and dominated the cost of FhirResource.json().
+    if isinstance(d, dict):
+        result: Dict[str, Any] = {}
+        for k, v in d.items():
+            v = _remove_empty_elements(v)
+            if not _is_empty(v):
+                result[k] = v
+        return result
+    if isinstance(d, list):
+        stripped = (_remove_empty_elements(v) for v in d)
+        return [v for v in stripped if not _is_empty(v)]
+    return d
 
 
 class FhirClientJsonHelpers:
@@ -41,32 +69,10 @@ class FhirClientJsonHelpers:
         :return: dictionary or list of dictionaries
         """
 
-        def empty(x: Any) -> bool:
-            # Check if the input is None, an empty list, an empty dict, or an empty string
-            return (
-                x is None
-                or x == []
-                or x == {}
-                or (isinstance(x, str) and x.strip() == "")
-            )
-
-        if not isinstance(d, (dict, list)):
-            return d
-        elif isinstance(d, list):
-            return [
-                v
-                for v in (FhirClientJsonHelpers.remove_empty_elements(v) for v in d)
-                if not empty(v)
-            ]
-        else:
-            return {
-                k: v
-                for k, v in (
-                    (k, FhirClientJsonHelpers.remove_empty_elements(v))
-                    for k, v in d.items()
-                )
-                if not empty(v)
-            }
+        return cast(
+            List[Dict[str, Any]] | Dict[str, Any],
+            _remove_empty_elements(d),
+        )
 
     @staticmethod
     def convert_dict_to_fhir_json(dict_: Dict[str, Any]) -> str:

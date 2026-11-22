@@ -8,6 +8,7 @@ from typing import (
     Dict,
     override,
     Iterable,
+    Any,
 )
 
 from compressedfhir.fhir.base_resource_list import BaseResourceList
@@ -19,7 +20,15 @@ class FhirResourceList(BaseResourceList[FhirResource]):
     Represents a list of FHIR resources.
     """
 
-    __slots__: List[str] = BaseResourceList.__slots__
+    __slots__: List[str] = BaseResourceList.__slots__ + ["_keys"]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._keys: Set[str] = set()
+        for entry in self:
+            key = getattr(entry, "resource_type_and_id", None)
+            if key is not None:
+                self._keys.add(key)
 
     def get_resource_type_and_ids(self) -> List[str]:
         """
@@ -123,14 +132,11 @@ class FhirResourceList(BaseResourceList[FhirResource]):
 
         # check that we don't have a duplicate entry
         key: Optional[str] = x.resource_type_and_id
-        if key is None:
-            super().append(x)
-        else:
-            for entry in self:
-                if entry.resource_type_and_id == key:
-                    # we have a duplicate entry
-                    return
-            super().append(x)
+        if key is not None and key in self._keys:
+            return
+        if key is not None:
+            self._keys.add(key)
+        super().append(x)
 
     @override
     def extend(self, iterable: Iterable[FhirResource], /) -> None:
